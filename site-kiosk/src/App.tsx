@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./lib/supabase";
+import logoBDE from "./public/logoBDE.jpg";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -350,7 +351,7 @@ export default function App() {
     <div className="kiosk-shell">
       {/* Header */}
       <header className="kiosk-header">
-        <div className="kiosk-logo">BDE</div>
+        <img src={logoBDE} className="kiosk-logo" alt="Logo BDE" />
         <span className="kiosk-brand">BDE Epitech Réunion</span>
         <span className="kiosk-date">{currentDateTime}</span>
       </header>

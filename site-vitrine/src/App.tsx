@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./lib/supabase";
+import logoBDE from "./public/logoBDE.jpg";
 
 type View = "home" | "planning" | "detail";
 
@@ -197,7 +198,7 @@ function Navbar({
     <header className="nav">
       <div className="wrap nav-inner">
         <button className="brand-button" type="button" onClick={() => onNavigate("home")}>
-          <div className="brand-mark" aria-hidden="true">BDE</div>
+          <img src={logoBDE} className="brand-mark" alt="Logo BDE" />
           <span className="brand-name">BDE Epitech Réunion</span>
         </button>
 
