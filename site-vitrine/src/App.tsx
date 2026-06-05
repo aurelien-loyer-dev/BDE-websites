@@ -342,7 +342,13 @@ function EventDetailView({
   onBack: () => void;
 }) {
   const [showRegister, setShowRegister] = useState(false);
-  const [registered, setRegistered] = useState(false);
+  const [registered, setRegistered] = useState(() => {
+    if (!event) return false;
+    try {
+      const stored = JSON.parse(localStorage.getItem("bde_signups") ?? "[]") as string[];
+      return stored.includes(event.id);
+    } catch { return false; }
+  });
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState("");
   const [regForm, setRegForm] = useState({ firstName: "", lastName: "", email: "", cursus: "" });
@@ -374,6 +380,11 @@ function EventDetailView({
       setRegistering(false);
       return;
     }
+
+    try {
+      const stored = JSON.parse(localStorage.getItem("bde_signups") ?? "[]") as string[];
+      localStorage.setItem("bde_signups", JSON.stringify([...stored, event.id]));
+    } catch { /* localStorage indisponible */ }
 
     setRegistered(true);
     setRegistering(false);
