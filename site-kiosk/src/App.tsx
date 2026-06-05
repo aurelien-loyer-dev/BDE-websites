@@ -274,7 +274,30 @@ const SLIDE_DURATION_MS = 8000;
 const TICK_MS = 80;
 const REFETCH_MS = 5 * 60 * 1000;
 
+function useKioskScale() {
+  const [style, setStyle] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    function update() {
+      const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      setStyle({
+        transform: `scale(${s})`,
+        transformOrigin: "top left",
+        position: "absolute",
+        top: (window.innerHeight - 1080 * s) / 2,
+        left: (window.innerWidth - 1920 * s) / 2,
+      });
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  return style;
+}
+
 export default function App() {
+  const kioskStyle = useKioskScale();
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -348,7 +371,8 @@ export default function App() {
   const currentEvent = events[currentIndex] ?? null;
 
   return (
-    <div className="kiosk-shell">
+    <div className="kiosk-viewport">
+    <div className="kiosk-shell" style={kioskStyle}>
       {/* Header */}
       <header className="kiosk-header">
         <img src={logoBDE} className="kiosk-logo" alt="Logo BDE" />
@@ -384,6 +408,7 @@ export default function App() {
           {currentIndex + 1} / {events.length}
         </div>
       ) : null}
+    </div>
     </div>
   );
 }
