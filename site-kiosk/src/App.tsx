@@ -193,7 +193,6 @@ function EventSlide({ event }: { event: EventRecord }) {
       <div className="kiosk-main">
         <div className="kiosk-slide-brand">
           <img src={logoBDE} className="kiosk-slide-logo" alt="Logo BDE" />
-          <span className="kiosk-slide-brand-name">BDE Epitech Réunion</span>
         </div>
         <div className="kiosk-tag">{tag}</div>
         <h1 className="kiosk-title">{event.title}</h1>
