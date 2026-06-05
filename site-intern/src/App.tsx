@@ -604,7 +604,7 @@ function CreateEventView({
     existingEvent?.schedule.length ? existingEvent.schedule : [{ time: "", title: "", description: "" }],
   );
   const [extraPrices, setExtraPrices] = useState<PriceItem[]>(existingEvent?.extraPrices ?? []);
-  const [activities, setActivities] = useState<string[]>([]);
+  const [activities, setActivities] = useState<string[]>(existingEvent?.activities ?? []);
   const [activityInput, setActivityInput] = useState("");
   const [error, setError] = useState("");
 
