@@ -33,8 +33,10 @@ type EventRecord = {
 
 type Registration = {
   id: string;
-  user_id: string;
-  status: string;
+  first_name: string;
+  last_name: string | null;
+  email: string;
+  cursus: string | null;
   created_at: string;
 };
 
@@ -420,8 +422,8 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
     const client = supabase;
     setLoadingReg(true);
     client
-      .from("event_registrations")
-      .select("id, user_id, status, created_at")
+      .from("event_signups")
+      .select("id, first_name, last_name, email, cursus, created_at")
       .eq("event_id", event.id)
       .order("created_at", { ascending: true })
       .then(({ data }) => {
@@ -432,7 +434,7 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
 
   async function deleteRegistration(id: string) {
     if (!supabase) return;
-    await supabase.from("event_registrations").delete().eq("id", id);
+    await supabase.from("event_signups").delete().eq("id", id);
     setRegistrations((r) => r.filter((reg) => reg.id !== id));
   }
 
@@ -547,8 +549,10 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
             <table className="registrations-table">
               <thead>
                 <tr>
-                  <th>User ID</th>
-                  <th>Statut</th>
+                  <th>Prénom</th>
+                  <th>Nom</th>
+                  <th>Email</th>
+                  <th>Cursus</th>
                   <th>Inscrit le</th>
                   <th></th>
                 </tr>
@@ -556,14 +560,16 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
               <tbody>
                 {registrations.map((reg) => (
                   <tr key={reg.id}>
-                    <td className="muted-text" style={{ fontFamily: "monospace", fontSize: 12 }}>{reg.user_id}</td>
-                    <td><span className="badge badge-public">{reg.status}</span></td>
+                    <td>{reg.first_name}</td>
+                    <td>{reg.last_name ?? <span className="muted-text">—</span>}</td>
+                    <td>{reg.email}</td>
+                    <td>{reg.cursus ?? <span className="muted-text">—</span>}</td>
                     <td className="muted-text">{new Date(reg.created_at).toLocaleDateString("fr-FR")}</td>
                     <td>
                       <button
                         className="btn btn-small btn-danger"
                         type="button"
-                        onClick={() => { if (window.confirm("Supprimer cette inscription ?")) deleteRegistration(reg.id); }}
+                        onClick={() => { if (window.confirm(`Supprimer l'inscription de ${reg.first_name} ?`)) deleteRegistration(reg.id); }}
                       >
                         <Icon name="trash" />
                       </button>
