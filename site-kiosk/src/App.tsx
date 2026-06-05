@@ -191,6 +191,10 @@ function EventSlide({ event }: { event: EventRecord }) {
     <div className="kiosk-event">
       {/* Left — narrative */}
       <div className="kiosk-main">
+        <div className="kiosk-slide-brand">
+          <img src={logoBDE} className="kiosk-slide-logo" alt="Logo BDE" />
+          <span className="kiosk-slide-brand-name">BDE Epitech Réunion</span>
+        </div>
         <div className="kiosk-tag">{tag}</div>
         <h1 className="kiosk-title">{event.title}</h1>
         {event.description ? (
@@ -358,7 +362,6 @@ export default function App() {
     <div className="kiosk-shell" style={kioskStyle}>
       {/* Header */}
       <header className="kiosk-header">
-        <img src={logoBDE} className="kiosk-logo" alt="Logo BDE" />
         <span className="kiosk-brand">BDE Epitech Réunion</span>
         <span className="kiosk-date">{currentDateTime}</span>
       </header>
