@@ -291,28 +291,40 @@ export default function App() {
     formatCurrentDateTime(new Date()),
   );
 
-  // Initial load + periodic refetch
+  // Initial load + realtime subscription + fallback refetch
   useEffect(() => {
+    if (!supabase) return;
+    const client = supabase;
+
     let cancelled = false;
 
-    async function load() {
+    async function load(preserveIndex = false) {
       const result = await fetchPublicEvents();
-      if (!cancelled) {
-        setEvents(result);
+      if (cancelled) return;
+      setEvents(result);
+      if (!preserveIndex) {
         setCurrentIndex(0);
         setProgress(0);
+      } else {
+        setCurrentIndex((idx) => (result.length > 0 ? Math.min(idx, result.length - 1) : 0));
       }
     }
 
-    load();
+    load(false);
 
-    const refetchInterval = setInterval(() => {
-      load();
-    }, REFETCH_MS);
+    const channel = client
+      .channel("kiosk-events")
+      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => {
+        load(true);
+      })
+      .subscribe();
+
+    const refetchInterval = setInterval(() => load(true), REFETCH_MS);
 
     return () => {
       cancelled = true;
       clearInterval(refetchInterval);
+      client.removeChannel(channel);
     };
   }, []);
 
