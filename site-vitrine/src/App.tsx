@@ -366,7 +366,11 @@ function EventDetailView({
     });
 
     if (error) {
-      setRegisterError("Une erreur est survenue. Réessaie.");
+      if (error.code === "23505") {
+        setRegisterError("Tu es déjà inscrit(e) à cet événement.");
+      } else {
+        setRegisterError("Une erreur est survenue. Réessaie.");
+      }
       setRegistering(false);
       return;
     }
