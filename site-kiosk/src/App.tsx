@@ -243,6 +243,20 @@ function EventSlide({ event }: { event: EventRecord }) {
             </span>
           </div>
           <div className="kiosk-info-row">
+            <span className="kiosk-info-label">Tarif d'entrée</span>
+            <span className="kiosk-info-value">{formatPrice(event.entryPrice)}</span>
+          </div>
+          {event.extraPrices.length > 0 ? (
+            <div className="kiosk-extra-prices">
+              {event.extraPrices.map((item, i) => (
+                <div className="kiosk-extra-price-row" key={i}>
+                  <span className="kiosk-extra-price-label">{item.label}</span>
+                  <span className="kiosk-extra-price-amount">{formatPrice(item.amount)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="kiosk-info-row">
             <span className="kiosk-info-label">Places</span>
             <span className="kiosk-info-value">
               {event.places > 0 ? `${event.places} disponibles` : "Non limité"}

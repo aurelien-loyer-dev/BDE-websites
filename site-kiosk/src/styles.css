@@ -251,6 +251,35 @@ body {
   color: var(--text);
 }
 
+/* ─── Extra Prices ─── */
+.kiosk-extra-prices {
+  padding: 12px 0 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kiosk-extra-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.kiosk-extra-price-label {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.kiosk-extra-price-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
 /* ─── Timeline ─── */
 .kiosk-timeline {
   display: flex;
