@@ -182,8 +182,16 @@ async function fetchPublicEvents(): Promise<EventRecord[]> {
 // ─── EventSlide ───────────────────────────────────────────────────────────────
 
 function EventSlide({ event }: { event: EventRecord }) {
-  const tag =
-    event.activities.length > 0 ? event.activities[0] : "Événement BDE";
+  const activities = event.activities.length > 0 ? event.activities : ["Événement BDE"];
+  const [activityIndex, setActivityIndex] = useState(0);
+
+  useEffect(() => {
+    if (activities.length <= 1) return;
+    const timer = setInterval(() => {
+      setActivityIndex((i) => (i + 1) % activities.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [activities.length]);
 
   const scheduleItems = event.schedule;
 
@@ -194,7 +202,7 @@ function EventSlide({ event }: { event: EventRecord }) {
         <div className="kiosk-slide-brand">
           <img src={logoBDE} className="kiosk-slide-logo" alt="Logo BDE" />
         </div>
-        <div className="kiosk-tag">{tag}</div>
+        <div className="kiosk-tag">{activities[activityIndex]}</div>
         <h1 className="kiosk-title">{event.title}</h1>
         {event.description ? (
           <p className="kiosk-description">{event.description}</p>
