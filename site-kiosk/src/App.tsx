@@ -191,16 +191,15 @@ function EventSlide({ event }: { event: EventRecord }) {
         <div className="kiosk-slide-brand">
           <img src={logoBDE} className="kiosk-slide-logo" alt="Logo BDE" />
         </div>
+        <span className="kiosk-type">Événement BDE</span>
+        <h1 className="kiosk-title">{event.title}</h1>
         {event.activities.length > 0 ? (
           <div className="kiosk-activities">
             {event.activities.map((activity) => (
-              <span className="kiosk-tag" key={activity}>{activity}</span>
+              <span className="kiosk-activity-chip" key={activity}>{activity}</span>
             ))}
           </div>
-        ) : (
-          <span className="kiosk-tag">Événement BDE</span>
-        )}
-        <h1 className="kiosk-title">{event.title}</h1>
+        ) : null}
         {event.description ? (
           <p className="kiosk-description">{event.description}</p>
         ) : null}
