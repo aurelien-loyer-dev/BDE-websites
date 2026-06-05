@@ -262,7 +262,7 @@ function EventSlide({ event }: { event: EventRecord }) {
 
 const SLIDE_DURATION_MS = 8000;
 const TICK_MS = 80;
-const REFETCH_MS = 5 * 60 * 1000;
+const REFETCH_MS = 10 * 1000;
 
 function useKioskScale() {
   const [style, setStyle] = useState<React.CSSProperties>({});
