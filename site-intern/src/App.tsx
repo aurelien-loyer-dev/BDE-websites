@@ -650,8 +650,8 @@ function CreateEventView({
     setActivityInput("");
   }
 
-  function removeActivity(index: number) {
-    setActivities((current) => current.filter((_, activityIndex) => activityIndex !== index));
+  function removeActivity(value: string) {
+    setActivities((current) => current.filter((a) => a !== value));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -828,7 +828,7 @@ function CreateEventView({
               {activities.map((activity, index) => (
                 <span className="tag-removable" key={activity}>
                   {activity}
-                  <button type="button" onClick={() => removeActivity(index)} aria-label={`Retirer ${activity}`}>
+                  <button type="button" onClick={() => removeActivity(activity)} aria-label={`Retirer ${activity}`}>
                     <Icon name="close" />
                   </button>
                 </span>
