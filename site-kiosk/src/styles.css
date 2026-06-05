@@ -121,13 +121,13 @@ body {
   -webkit-flex: 1;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: -webkit-box;
   display: -webkit-flex;
   display: flex;
   -webkit-flex-direction: column;
   flex-direction: column;
-  justify-content: center;
-  gap: 32px;
+  gap: 28px;
   overflow: hidden;
 }
 
@@ -154,12 +154,16 @@ body {
 }
 
 .kiosk-description {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1;
+  flex: 1;
+  min-height: 0;
   font-size: 24px;
   line-height: 1.65;
   color: var(--text-muted);
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 8;
+  -webkit-line-clamp: 12;
   -webkit-box-orient: vertical;
 }
 
@@ -177,9 +181,9 @@ body {
 }
 
 .kiosk-slide-logo {
-  width: 120px;
-  height: 120px;
-  border-radius: 18px;
+  width: 160px;
+  height: 160px;
+  border-radius: 20px;
   object-fit: contain;
   -webkit-flex-shrink: 0;
   flex-shrink: 0;
@@ -196,6 +200,7 @@ body {
 /* ─── Right Column — fiche factuelle ─── */
 .kiosk-sidebar {
   width: 520px;
+  min-height: 0;
   display: -webkit-box;
   display: -webkit-flex;
   display: flex;
@@ -204,7 +209,7 @@ body {
   gap: 16px;
   -webkit-flex-shrink: 0;
   flex-shrink: 0;
-  justify-content: center;
+  overflow: hidden;
 }
 
 .kiosk-info-card {
@@ -212,7 +217,9 @@ body {
   border: 2px solid var(--border);
   border-left: 5px solid var(--accent);
   border-radius: var(--radius);
-  padding: 36px 40px;
+  padding: 28px 36px;
+  -webkit-flex-shrink: 0;
+  flex-shrink: 0;
 }
 
 .kiosk-info-row {
@@ -278,15 +285,20 @@ body {
 
 /* ─── Timeline ─── */
 .kiosk-timeline {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1;
+  flex: 1;
+  min-height: 0;
+  display: -webkit-box;
+  display: -webkit-flex;
   display: flex;
+  -webkit-flex-direction: column;
   flex-direction: column;
-  gap: 0;
-  max-height: 320px;
   overflow: hidden;
   background: var(--surface);
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  padding: 28px 32px;
+  padding: 24px 32px;
 }
 
 .kiosk-timeline-header {
@@ -303,11 +315,14 @@ body {
 }
 
 .kiosk-timeline-item {
-  display: grid;
-  grid-template-columns: 90px 1fr;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
   gap: 16px;
-  padding: 14px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
+  -webkit-flex-shrink: 0;
+  flex-shrink: 0;
 }
 
 .kiosk-timeline-item:last-child {
@@ -324,6 +339,9 @@ body {
   font-size: 20px;
   font-weight: 700;
   color: var(--accent-dark);
+  width: 90px;
+  -webkit-flex-shrink: 0;
+  flex-shrink: 0;
 }
 
 .kiosk-timeline-title {

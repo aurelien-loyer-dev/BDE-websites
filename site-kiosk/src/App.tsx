@@ -185,7 +185,7 @@ function EventSlide({ event }: { event: EventRecord }) {
   const tag =
     event.activities.length > 0 ? event.activities[0] : "Événement BDE";
 
-  const scheduleItems = event.schedule.slice(0, 5);
+  const scheduleItems = event.schedule;
 
   return (
     <div className="kiosk-event">
