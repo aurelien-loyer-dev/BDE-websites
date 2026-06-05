@@ -189,47 +189,16 @@ function EventSlide({ event }: { event: EventRecord }) {
 
   return (
     <div className="kiosk-event">
-      {/* Left column */}
+      {/* Left — narrative */}
       <div className="kiosk-main">
         <div className="kiosk-tag">{tag}</div>
-
         <h1 className="kiosk-title">{event.title}</h1>
-
-        <div className="kiosk-meta">
-          <div className="kiosk-meta-row">
-            <IconCalendar />
-            <span>{formatDateLong(event.date)}</span>
-          </div>
-          <div className="kiosk-meta-row">
-            <IconClock />
-            <span>{event.time || "Heure à définir"}</span>
-          </div>
-          <div className="kiosk-meta-row">
-            <IconPin />
-            <span>{event.location || "Lieu à définir"}</span>
-          </div>
-          <div className="kiosk-meta-row">
-            <IconEuro />
-            <span>{formatPrice(event.entryPrice)}</span>
-          </div>
-        </div>
-
         {event.description ? (
           <p className="kiosk-description">{event.description}</p>
         ) : null}
-
-        {event.activities.length > 0 ? (
-          <div className="kiosk-activities">
-            {event.activities.map((activity) => (
-              <span className="kiosk-chip" key={activity}>
-                {activity}
-              </span>
-            ))}
-          </div>
-        ) : null}
       </div>
 
-      {/* Right column */}
+      {/* Right — fiche factuelle */}
       <div className="kiosk-sidebar">
         <div className="kiosk-info-card">
           <div className="kiosk-info-row">
@@ -238,24 +207,26 @@ function EventSlide({ event }: { event: EventRecord }) {
           </div>
           <div className="kiosk-info-row">
             <span className="kiosk-info-label">Heure</span>
-            <span className="kiosk-info-value">
-              {event.time || "À définir"}
-            </span>
+            <span className="kiosk-info-value">{event.time || "À définir"}</span>
+          </div>
+          <div className="kiosk-info-row">
+            <span className="kiosk-info-label">Lieu</span>
+            <span className="kiosk-info-value">{event.location || "À définir"}</span>
           </div>
           <div className="kiosk-info-row">
             <span className="kiosk-info-label">Tarif d'entrée</span>
             <span className="kiosk-info-value">{formatPrice(event.entryPrice)}</span>
+            {event.extraPrices.length > 0 ? (
+              <div className="kiosk-extra-prices">
+                {event.extraPrices.map((item, i) => (
+                  <div className="kiosk-extra-price-row" key={i}>
+                    <span className="kiosk-extra-price-label">{item.label}</span>
+                    <span className="kiosk-extra-price-amount">{formatPrice(item.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
-          {event.extraPrices.length > 0 ? (
-            <div className="kiosk-extra-prices">
-              {event.extraPrices.map((item, i) => (
-                <div className="kiosk-extra-price-row" key={i}>
-                  <span className="kiosk-extra-price-label">{item.label}</span>
-                  <span className="kiosk-extra-price-amount">{formatPrice(item.amount)}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
           <div className="kiosk-info-row">
             <span className="kiosk-info-label">Places</span>
             <span className="kiosk-info-value">
@@ -269,9 +240,7 @@ function EventSlide({ event }: { event: EventRecord }) {
             <div className="kiosk-timeline-header">Programme</div>
             {scheduleItems.map((item, index) => (
               <div className="kiosk-timeline-item" key={`${item.time}-${index}`}>
-                <span className="kiosk-timeline-time">
-                  {item.time || "--:--"}
-                </span>
+                <span className="kiosk-timeline-time">{item.time || "--:--"}</span>
                 <span className="kiosk-timeline-title">{item.title}</span>
               </div>
             ))}
