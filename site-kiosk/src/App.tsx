@@ -182,17 +182,6 @@ async function fetchPublicEvents(): Promise<EventRecord[]> {
 // ─── EventSlide ───────────────────────────────────────────────────────────────
 
 function EventSlide({ event }: { event: EventRecord }) {
-  const activities = event.activities.length > 0 ? event.activities : ["Événement BDE"];
-  const [activityIndex, setActivityIndex] = useState(0);
-
-  useEffect(() => {
-    if (activities.length <= 1) return;
-    const timer = setInterval(() => {
-      setActivityIndex((i) => (i + 1) % activities.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [activities.length]);
-
   const scheduleItems = event.schedule;
 
   return (
@@ -202,7 +191,15 @@ function EventSlide({ event }: { event: EventRecord }) {
         <div className="kiosk-slide-brand">
           <img src={logoBDE} className="kiosk-slide-logo" alt="Logo BDE" />
         </div>
-        <div className="kiosk-tag">{activities[activityIndex]}</div>
+        {event.activities.length > 0 ? (
+          <div className="kiosk-activities">
+            {event.activities.map((activity) => (
+              <span className="kiosk-tag" key={activity}>{activity}</span>
+            ))}
+          </div>
+        ) : (
+          <span className="kiosk-tag">Événement BDE</span>
+        )}
         <h1 className="kiosk-title">{event.title}</h1>
         {event.description ? (
           <p className="kiosk-description">{event.description}</p>
