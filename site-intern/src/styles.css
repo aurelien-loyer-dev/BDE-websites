@@ -1132,3 +1132,69 @@ a {
     padding: 18px;
   }
 }
+
+/* ─── Registrations ─── */
+
+.registrations-section {
+  margin-top: 40px;
+  padding-bottom: 80px;
+}
+
+.registrations-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.registrations-header h3 {
+  margin: 0;
+}
+
+.registrations-count {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-strong);
+}
+
+.registrations-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.registrations-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.registrations-table th {
+  text-align: left;
+  padding: 11px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-strong);
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.registrations-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.registrations-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.registrations-table tbody tr:hover td {
+  background: var(--surface-alt);
+}

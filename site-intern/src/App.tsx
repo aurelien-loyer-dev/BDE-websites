@@ -31,6 +31,14 @@ type EventRecord = {
   activities: string[];
 };
 
+type Registration = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  created_at: string;
+};
+
 type FormState = {
   title: string;
   date: string;
@@ -411,6 +419,30 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
   const [registerError, setRegisterError] = useState("");
   const [regForm, setRegForm] = useState({ firstName: "", lastName: "", email: "" });
 
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [loadingReg, setLoadingReg] = useState(false);
+
+  useEffect(() => {
+    if (!supabase || !event) return;
+    const client = supabase;
+    setLoadingReg(true);
+    client
+      .from("event_registrations")
+      .select("id, first_name, last_name, email, created_at")
+      .eq("event_id", event.id)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        setRegistrations((data ?? []) as Registration[]);
+        setLoadingReg(false);
+      });
+  }, [event?.id]);
+
+  async function deleteRegistration(id: string) {
+    if (!supabase) return;
+    await supabase.from("event_registrations").delete().eq("id", id);
+    setRegistrations((r) => r.filter((reg) => reg.id !== id));
+  }
+
   async function handleRegister(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!regForm.firstName.trim() || !regForm.email.trim()) {
@@ -420,7 +452,7 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
     setRegistering(true);
     setRegisterError("");
     if (supabase && event) {
-      const { error } = await supabase.from("registrations").insert({
+      const { error } = await supabase.from("event_registrations").insert({
         event_id: event.id,
         first_name: regForm.firstName.trim(),
         last_name: regForm.lastName.trim(),
@@ -511,6 +543,7 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
         <aside>
           <div className="info-card">
             <DetailStat icon={<Icon name="calendar" />} label="Date" value={formatLongDate(event.date, longDateFormatter)} />
+
             <DetailStat icon={<Icon name="clock" />} label="Heure" value={event.time || "À définir"} />
             <DetailStat icon={<Icon name="pin" />} label="Lieu" value={event.location || "À définir"} />
             <DetailStat icon={<Icon name="euro" />} label="Tarif d'entrée" value={formatPrice(event.entryPrice)} valueClassName={event.entryPrice === 0 ? "price-free" : ""} />
@@ -568,6 +601,52 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
             )}
           </div>
         </aside>
+      </section>
+
+      <section className="wrap registrations-section">
+        <div className="registrations-header">
+          <h3>Inscriptions</h3>
+          <span className="registrations-count">{registrations.length} inscrit{registrations.length !== 1 ? "s" : ""}</span>
+        </div>
+
+        {loadingReg ? (
+          <div className="loading-shell">Chargement…</div>
+        ) : registrations.length === 0 ? (
+          <div className="empty-inline">Aucune inscription pour le moment.</div>
+        ) : (
+          <div className="registrations-table-wrap">
+            <table className="registrations-table">
+              <thead>
+                <tr>
+                  <th>Prénom</th>
+                  <th>Nom</th>
+                  <th>Email</th>
+                  <th>Inscrit le</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {registrations.map((reg) => (
+                  <tr key={reg.id}>
+                    <td>{reg.first_name}</td>
+                    <td>{reg.last_name || <span className="muted-text">—</span>}</td>
+                    <td>{reg.email}</td>
+                    <td className="muted-text">{new Date(reg.created_at).toLocaleDateString("fr-FR")}</td>
+                    <td>
+                      <button
+                        className="btn btn-small btn-danger"
+                        type="button"
+                        onClick={() => { if (window.confirm(`Supprimer l'inscription de ${reg.first_name} ?`)) deleteRegistration(reg.id); }}
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </>
   );
