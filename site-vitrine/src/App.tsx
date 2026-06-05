@@ -341,33 +341,34 @@ function EventDetailView({
   event: EventRecord | undefined;
   onBack: () => void;
 }) {
-  const [showRegister, setShowRegister] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState("");
-  const [regForm, setRegForm] = useState({ firstName: "", lastName: "", email: "" });
 
-  async function handleRegister(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!regForm.firstName.trim() || !regForm.email.trim()) {
-      setRegisterError("Prénom et email requis.");
-      return;
-    }
+  async function handleRegister() {
+    if (!supabase || !event) return;
     setRegistering(true);
     setRegisterError("");
-    if (supabase && event) {
-      const { error } = await supabase.from("event_registrations").insert({
-        event_id: event.id,
-        first_name: regForm.firstName.trim(),
-        last_name: regForm.lastName.trim(),
-        email: regForm.email.trim().toLowerCase(),
-      });
-      if (error) {
-        setRegisterError("Une erreur est survenue. Réessaie.");
-        setRegistering(false);
-        return;
-      }
+
+    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+    if (authError || !authData.user) {
+      setRegisterError("Une erreur est survenue. Réessaie.");
+      setRegistering(false);
+      return;
     }
+
+    const { error } = await supabase.from("event_registrations").insert({
+      event_id: event.id,
+      user_id: authData.user.id,
+      status: "registered",
+    });
+
+    if (error) {
+      setRegisterError("Une erreur est survenue. Réessaie.");
+      setRegistering(false);
+      return;
+    }
+
     setRegistered(true);
     setRegistering(false);
   }
@@ -488,37 +489,14 @@ function EventDetailView({
                 <div className="register-success-check">✓</div>
                 <div>
                   <div className="register-success-title">Inscription confirmée !</div>
-                  <div className="register-success-sub">Tu recevras les informations par email.</div>
+                  <div className="register-success-sub">À bientôt à l'événement !</div>
                 </div>
               </div>
-            ) : showRegister ? (
-              <form className="register-form" onSubmit={handleRegister}>
-                {registerError ? <div className="form-error">{registerError}</div> : null}
-                <div className="field-row">
-                  <div className="field">
-                    <label className="field-label">Prénom <span className="req">*</span></label>
-                    <input className="input" value={regForm.firstName} onChange={(e) => setRegForm((f) => ({ ...f, firstName: e.target.value }))} placeholder="Prénom" />
-                  </div>
-                  <div className="field">
-                    <label className="field-label">Nom</label>
-                    <input className="input" value={regForm.lastName} onChange={(e) => setRegForm((f) => ({ ...f, lastName: e.target.value }))} placeholder="Nom" />
-                  </div>
-                </div>
-                <div className="field">
-                  <label className="field-label">Email <span className="req">*</span></label>
-                  <input className="input" type="email" value={regForm.email} onChange={(e) => setRegForm((f) => ({ ...f, email: e.target.value }))} placeholder="prenom.nom@epitech.eu" />
-                </div>
-                <button className="btn btn-primary btn-full" type="submit" disabled={registering}>
-                  {registering ? "Inscription..." : "Confirmer l'inscription"}
-                </button>
-                <button className="btn btn-full" type="button" onClick={() => setShowRegister(false)} style={{ marginTop: 8 }}>
-                  Annuler
-                </button>
-              </form>
             ) : (
               <>
-                <button className="btn btn-primary btn-full detail-cta" type="button" onClick={() => setShowRegister(true)}>
-                  S&apos;inscrire
+                {registerError ? <div className="form-error" style={{ marginTop: 16 }}>{registerError}</div> : null}
+                <button className="btn btn-primary btn-full detail-cta" type="button" onClick={handleRegister} disabled={registering}>
+                  {registering ? "Inscription..." : "S'inscrire"}
                 </button>
                 <p className="detail-note">Les inscriptions sont ouvertes.</p>
               </>

@@ -33,9 +33,8 @@ type EventRecord = {
 
 type Registration = {
   id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
+  user_id: string;
+  status: string;
   created_at: string;
 };
 
@@ -413,12 +412,6 @@ function PlanningView({ events, filter, onFilterChange, onOpenEvent, shortDateFo
 }
 
 function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }: { event: EventRecord | undefined; onBack: () => void; onEdit: (event: EventRecord) => void; onDelete: (id: string) => void; longDateFormatter: Intl.DateTimeFormat; }) {
-  const [showRegister, setShowRegister] = useState(false);
-  const [registered, setRegistered] = useState(false);
-  const [registering, setRegistering] = useState(false);
-  const [registerError, setRegisterError] = useState("");
-  const [regForm, setRegForm] = useState({ firstName: "", lastName: "", email: "" });
-
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loadingReg, setLoadingReg] = useState(false);
 
@@ -428,7 +421,7 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
     setLoadingReg(true);
     client
       .from("event_registrations")
-      .select("id, first_name, last_name, email, created_at")
+      .select("id, user_id, status, created_at")
       .eq("event_id", event.id)
       .order("created_at", { ascending: true })
       .then(({ data }) => {
@@ -441,31 +434,6 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
     if (!supabase) return;
     await supabase.from("event_registrations").delete().eq("id", id);
     setRegistrations((r) => r.filter((reg) => reg.id !== id));
-  }
-
-  async function handleRegister(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!regForm.firstName.trim() || !regForm.email.trim()) {
-      setRegisterError("Prénom et email requis.");
-      return;
-    }
-    setRegistering(true);
-    setRegisterError("");
-    if (supabase && event) {
-      const { error } = await supabase.from("event_registrations").insert({
-        event_id: event.id,
-        first_name: regForm.firstName.trim(),
-        last_name: regForm.lastName.trim(),
-        email: regForm.email.trim().toLowerCase(),
-      });
-      if (error) {
-        setRegisterError("Une erreur est survenue. Réessaie.");
-        setRegistering(false);
-        return;
-      }
-    }
-    setRegistered(true);
-    setRegistering(false);
   }
 
   if (!event) {
@@ -559,46 +527,7 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
             ) : null}
             <DetailStat icon={<Icon name="users" />} label="Places" value={event.places > 0 ? `${event.places} disponibles` : "Non limité"} />
 
-            {registered ? (
-              <div className="register-success">
-                <div className="register-success-check">✓</div>
-                <div>
-                  <div className="register-success-title">Inscription confirmée !</div>
-                  <div className="register-success-sub">Tu recevras les informations par email.</div>
-                </div>
-              </div>
-            ) : showRegister ? (
-              <form className="register-form" onSubmit={handleRegister}>
-                {registerError ? <div className="form-error">{registerError}</div> : null}
-                <div className="field-row">
-                  <div className="field">
-                    <FieldLabel>Prénom <span className="req">*</span></FieldLabel>
-                    <input className="input" value={regForm.firstName} onChange={(e) => setRegForm((f) => ({ ...f, firstName: e.target.value }))} placeholder="Prénom" />
-                  </div>
-                  <div className="field">
-                    <FieldLabel>Nom</FieldLabel>
-                    <input className="input" value={regForm.lastName} onChange={(e) => setRegForm((f) => ({ ...f, lastName: e.target.value }))} placeholder="Nom" />
-                  </div>
-                </div>
-                <div className="field">
-                  <FieldLabel>Email <span className="req">*</span></FieldLabel>
-                  <input className="input" type="email" value={regForm.email} onChange={(e) => setRegForm((f) => ({ ...f, email: e.target.value }))} placeholder="prenom.nom@epitech.eu" />
-                </div>
-                <button className="btn btn-primary btn-full" type="submit" disabled={registering}>
-                  {registering ? "Inscription..." : "Confirmer l'inscription"}
-                </button>
-                <button className="btn btn-full" type="button" onClick={() => setShowRegister(false)} style={{ marginTop: 8 }}>
-                  Annuler
-                </button>
-              </form>
-            ) : (
-              <>
-                <button className="btn btn-primary btn-full detail-cta" type="button" onClick={() => setShowRegister(true)}>
-                  S&apos;inscrire
-                </button>
-                <p className="detail-note">Les inscriptions sont ouvertes.</p>
-              </>
-            )}
+            <DetailStat icon={<Icon name="users" />} label="Inscrits" value={`${registrations.length}`} />
           </div>
         </aside>
       </section>
@@ -618,9 +547,8 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
             <table className="registrations-table">
               <thead>
                 <tr>
-                  <th>Prénom</th>
-                  <th>Nom</th>
-                  <th>Email</th>
+                  <th>User ID</th>
+                  <th>Statut</th>
                   <th>Inscrit le</th>
                   <th></th>
                 </tr>
@@ -628,15 +556,14 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
               <tbody>
                 {registrations.map((reg) => (
                   <tr key={reg.id}>
-                    <td>{reg.first_name}</td>
-                    <td>{reg.last_name || <span className="muted-text">—</span>}</td>
-                    <td>{reg.email}</td>
+                    <td className="muted-text" style={{ fontFamily: "monospace", fontSize: 12 }}>{reg.user_id}</td>
+                    <td><span className="badge badge-public">{reg.status}</span></td>
                     <td className="muted-text">{new Date(reg.created_at).toLocaleDateString("fr-FR")}</td>
                     <td>
                       <button
                         className="btn btn-small btn-danger"
                         type="button"
-                        onClick={() => { if (window.confirm(`Supprimer l'inscription de ${reg.first_name} ?`)) deleteRegistration(reg.id); }}
+                        onClick={() => { if (window.confirm("Supprimer cette inscription ?")) deleteRegistration(reg.id); }}
                       >
                         <Icon name="trash" />
                       </button>
