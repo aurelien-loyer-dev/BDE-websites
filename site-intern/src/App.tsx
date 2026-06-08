@@ -333,6 +333,102 @@ function AuthScreen({
   );
 }
 
+function SetPasswordScreen() {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    if (password.trim().length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    if (!supabase) {
+      setError("Connexion à Supabase indisponible.");
+      return;
+    }
+
+    setSubmitting(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+
+    if (updateError) {
+      setError(updateError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    setDone(true);
+    setSubmitting(false);
+  }
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-panel">
+        <div className="brand-row">
+          <img src={logoBDE} className="brand-mark" alt="Logo BDE" />
+          <div>
+            <div className="brand-name">BDE Epitech Réunion</div>
+            <div className="brand-subtitle">Activation du compte</div>
+          </div>
+        </div>
+
+        <h1>Définir votre mot de passe</h1>
+
+        {done ? (
+          <p>Mot de passe défini avec succès. Vous pouvez maintenant vous connecter.</p>
+        ) : (
+          <>
+            <p>Choisissez un mot de passe pour activer votre accès à l&apos;espace membres.</p>
+
+            {error ? <div className="form-error">{error}</div> : null}
+
+            <form onSubmit={handleSubmit}>
+              <div className="field">
+                <FieldLabel>Nouveau mot de passe</FieldLabel>
+                <input
+                  className="input"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div className="field">
+                <FieldLabel>Confirmer le mot de passe</FieldLabel>
+                <input
+                  className="input"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <button className="btn btn-primary btn-full" type="submit" disabled={submitting}>
+                {submitting ? "Validation..." : "Définir le mot de passe"}
+              </button>
+            </form>
+          </>
+        )}
+      </section>
+    </main>
+  );
+}
+
 function Navbar({ view, onNavigate, onLogout }: { view: View; onNavigate: (next: View) => void; onLogout: () => void }) {
   const items: Array<{ id: View; label: string }> = [
     { id: "home", label: "Accueil" },
@@ -904,6 +1000,7 @@ function CreateEventView({
 }
 
 export default function App() {
+  const [isInviteFlow] = useState(() => window.location.hash.includes("type=invite"));
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
@@ -1200,6 +1297,10 @@ export default function App() {
 
     setUserEmail(normalizedEmail);
     setAuthSubmitting(false);
+  }
+
+  if (isInviteFlow) {
+    return <SetPasswordScreen />;
   }
 
   if (authLoading) {
