@@ -223,16 +223,26 @@ function EventCard({
   event,
   onOpen,
   shortDateFormatter,
+  past,
 }: {
   event: EventRecord;
   onOpen: () => void;
   shortDateFormatter: Intl.DateTimeFormat;
+  past?: boolean;
 }) {
   return (
-    <button className="event-card" type="button" onClick={onOpen}>
+    <button className={`event-card${past ? " event-card-past" : ""}`} type="button" onClick={onOpen}>
       <div className="card-top">
         <span className="card-date">{formatDayLabel(event.date, shortDateFormatter)}</span>
-        <Badge visibility={event.visibility} />
+        <div className="card-top-badges">
+          {past ? (
+            <span className="badge badge-muted">
+              <span className="badge-dot" />
+              Terminé
+            </span>
+          ) : null}
+          <Badge visibility={event.visibility} />
+        </div>
       </div>
 
       <h3>{event.title}</h3>
@@ -375,6 +385,10 @@ function PlanningView({ events, filter, onFilterChange, onOpenEvent, shortDateFo
 
   const shownEvents = events.filter((event) => filter === "all" || event.visibility === filter);
 
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = shownEvents.filter((event) => event.date >= today);
+  const past = shownEvents.filter((event) => event.date < today).slice().reverse();
+
   return (
     <section className="block">
       <div className="wrap">
@@ -400,11 +414,29 @@ function PlanningView({ events, filter, onFilterChange, onOpenEvent, shortDateFo
         </div>
 
         {shownEvents.length > 0 ? (
-          <div className="list-grid">
-            {shownEvents.map((event) => (
-              <EventCard key={event.id} event={event} shortDateFormatter={shortDateFormatter} onOpen={() => onOpenEvent(event.id)} />
-            ))}
-          </div>
+          <>
+            <h3 className="planning-group-title">À venir</h3>
+            {upcoming.length > 0 ? (
+              <div className="list-grid">
+                {upcoming.map((event) => (
+                  <EventCard key={event.id} event={event} shortDateFormatter={shortDateFormatter} onOpen={() => onOpenEvent(event.id)} />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-inline">Aucun événement à venir.</div>
+            )}
+
+            {past.length > 0 ? (
+              <>
+                <h3 className="planning-group-title planning-group-title-past">Passés</h3>
+                <div className="list-grid">
+                  {past.map((event) => (
+                    <EventCard key={event.id} event={event} shortDateFormatter={shortDateFormatter} onOpen={() => onOpenEvent(event.id)} past />
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </>
         ) : (
           <div className="empty-state">Aucun événement pour le moment.</div>
         )}
@@ -416,6 +448,9 @@ function PlanningView({ events, filter, onFilterChange, onOpenEvent, shortDateFo
 function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }: { event: EventRecord | undefined; onBack: () => void; onEdit: (event: EventRecord) => void; onDelete: (id: string) => void; longDateFormatter: Intl.DateTimeFormat; }) {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loadingReg, setLoadingReg] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const isPast = !!event && event.date < today;
 
   useEffect(() => {
     if (!supabase || !event) return;
@@ -468,6 +503,12 @@ function EventDetailView({ event, onBack, onEdit, onDelete, longDateFormatter }:
 
           <div className="detail-meta-row">
             <Badge visibility={event.visibility} />
+            {isPast ? (
+              <span className="badge badge-muted">
+                <span className="badge-dot" />
+                Terminé
+              </span>
+            ) : null}
             <span className="muted-text">{formatDayLabel(event.date, longDateFormatter)} · {event.time || "À définir"}</span>
           </div>
 

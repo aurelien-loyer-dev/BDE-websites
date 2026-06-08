@@ -310,6 +310,31 @@ a {
   transform: translateY(-2px);
 }
 
+.event-card-past {
+  opacity: 0.6;
+}
+
+.event-card-past:hover {
+  opacity: 0.85;
+}
+
+.planning-group-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 16px;
+}
+
+.planning-group-title:not(:first-child) {
+  margin-top: 44px;
+}
+
+.planning-group-title-past {
+  color: var(--muted);
+}
+
 .card-top {
   display: flex;
   align-items: flex-start;
@@ -388,6 +413,15 @@ a {
 
 .badge-public .badge-dot {
   background: var(--accent);
+}
+
+.badge-muted {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.badge-muted .badge-dot {
+  background: var(--muted-strong);
 }
 
 /* ─── Filters / pills ─── */

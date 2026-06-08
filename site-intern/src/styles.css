@@ -336,12 +336,43 @@ a {
   transform: translateY(-2px);
 }
 
+.event-card-past {
+  opacity: 0.6;
+}
+
+.event-card-past:hover {
+  opacity: 0.85;
+}
+
 .card-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+}
+
+.card-top-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planning-group-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 16px;
+}
+
+.planning-group-title:not(:first-child) {
+  margin-top: 44px;
+}
+
+.planning-group-title-past {
+  color: var(--muted);
 }
 
 .card-date {
@@ -416,6 +447,15 @@ a {
 
 .badge-private .badge-dot {
   background: #666666;
+}
+
+.badge-muted {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.badge-muted .badge-dot {
+  background: var(--muted-strong);
 }
 
 /* ─── Filters ─── */

@@ -149,17 +149,29 @@ function DetailStat({
 function EventCard({
   event,
   onOpenEvent,
+  past,
 }: {
   event: EventRecord;
   onOpenEvent: (id: string) => void;
+  past?: boolean;
 }) {
   const priceLabel = formatPrice(event.entryPrice);
   const isFree = event.entryPrice === 0;
 
   return (
-    <button className="event-card" type="button" onClick={() => onOpenEvent(event.id)}>
+    <button
+      className={`event-card${past ? " event-card-past" : ""}`}
+      type="button"
+      onClick={() => onOpenEvent(event.id)}
+    >
       <div className="card-top">
         <span className="card-date">{formatShortDate(event.date)}</span>
+        {past ? (
+          <span className="badge badge-muted">
+            <span className="badge-dot" />
+            Terminé
+          </span>
+        ) : null}
       </div>
 
       <h3>{event.title}</h3>
@@ -305,6 +317,13 @@ function PlanningView({
   loading: boolean;
   onOpenEvent: (id: string) => void;
 }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = useMemo(() => events.filter((e) => e.date >= today), [events, today]);
+  const past = useMemo(
+    () => events.filter((e) => e.date < today).slice().reverse(),
+    [events, today],
+  );
+
   return (
     <section className="block">
       <div className="wrap">
@@ -318,11 +337,29 @@ function PlanningView({
         {loading ? (
           <div className="loading-shell">Chargement des événements…</div>
         ) : events.length > 0 ? (
-          <div className="list-grid">
-            {events.map((event) => (
-              <EventCard key={event.id} event={event} onOpenEvent={onOpenEvent} />
-            ))}
-          </div>
+          <>
+            <h3 className="planning-group-title">À venir</h3>
+            {upcoming.length > 0 ? (
+              <div className="list-grid">
+                {upcoming.map((event) => (
+                  <EventCard key={event.id} event={event} onOpenEvent={onOpenEvent} />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-inline">Aucun événement à venir.</div>
+            )}
+
+            {past.length > 0 ? (
+              <>
+                <h3 className="planning-group-title planning-group-title-past">Passés</h3>
+                <div className="list-grid">
+                  {past.map((event) => (
+                    <EventCard key={event.id} event={event} onOpenEvent={onOpenEvent} past />
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </>
         ) : (
           <div className="empty-state">
             <p className="empty-state-title">Aucun événement public</p>
@@ -352,6 +389,9 @@ function EventDetailView({
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState("");
   const [regForm, setRegForm] = useState({ firstName: "", lastName: "", email: "", cursus: "" });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const isPast = !!event && event.date < today;
 
   async function handleRegister(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -417,6 +457,12 @@ function EventDetailView({
             <span className="muted-text">
               {formatLongDate(event.date)}{event.time ? ` · ${event.time}` : ""}
             </span>
+            {isPast ? (
+              <span className="badge badge-muted">
+                <span className="badge-dot" />
+                Terminé
+              </span>
+            ) : null}
           </div>
 
           <h1>{event.title}</h1>
@@ -509,6 +555,8 @@ function EventDetailView({
                   <div className="register-success-sub">À bientôt à l&apos;événement !</div>
                 </div>
               </div>
+            ) : isPast ? (
+              <p className="detail-note">Cet événement est terminé, les inscriptions sont closes.</p>
             ) : showRegister ? (
               <form className="register-form" onSubmit={handleRegister}>
                 {registerError ? <div className="form-error">{registerError}</div> : null}
