@@ -333,12 +333,65 @@ function AuthScreen({
   );
 }
 
+function readHashParams(): URLSearchParams {
+  return new URLSearchParams(window.location.hash.replace(/^#/, ""));
+}
+
+type InviteSessionStatus = "checking" | "ready" | "error";
+
 function SetPasswordScreen() {
+  const [sessionStatus, setSessionStatus] = useState<InviteSessionStatus>("checking");
+  const [sessionError, setSessionError] = useState("");
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const params = readHashParams();
+
+    if (params.has("error") || params.has("error_code")) {
+      setSessionError(
+        params.get("error_code") === "otp_expired"
+          ? "Ce lien d'invitation a expiré. Demande un nouveau lien au bureau du BDE."
+          : "Ce lien d'invitation n'est plus valable. Demande un nouveau lien au bureau du BDE.",
+      );
+      setSessionStatus("error");
+      return;
+    }
+
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    if (!accessToken || !refreshToken) {
+      setSessionError("Lien d'invitation incomplet ou invalide.");
+      setSessionStatus("error");
+      return;
+    }
+
+    if (!supabase) {
+      setSessionError("Connexion à Supabase indisponible.");
+      setSessionStatus("error");
+      return;
+    }
+
+    let active = true;
+    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error: setSessionErr }) => {
+      if (!active) return;
+      if (setSessionErr) {
+        setSessionError("Ce lien d'invitation a expiré. Demande un nouveau lien au bureau du BDE.");
+        setSessionStatus("error");
+        return;
+      }
+      setSessionStatus("ready");
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -383,45 +436,56 @@ function SetPasswordScreen() {
           </div>
         </div>
 
-        <h1>Définir votre mot de passe</h1>
-
-        {done ? (
-          <p>Mot de passe défini avec succès. Vous pouvez maintenant vous connecter.</p>
+        {sessionStatus === "checking" ? (
+          <p>Vérification du lien d&apos;invitation...</p>
+        ) : sessionStatus === "error" ? (
+          <>
+            <h1>Lien invalide</h1>
+            <p>{sessionError}</p>
+          </>
         ) : (
           <>
-            <p>Choisissez un mot de passe pour activer votre accès à l&apos;espace membres.</p>
+            <h1>Définir votre mot de passe</h1>
 
-            {error ? <div className="form-error">{error}</div> : null}
+            {done ? (
+              <p>Mot de passe défini avec succès. Vous pouvez maintenant vous connecter.</p>
+            ) : (
+              <>
+                <p>Choisissez un mot de passe pour activer votre accès à l&apos;espace membres.</p>
 
-            <form onSubmit={handleSubmit}>
-              <div className="field">
-                <FieldLabel>Nouveau mot de passe</FieldLabel>
-                <input
-                  className="input"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                />
-              </div>
+                {error ? <div className="form-error">{error}</div> : null}
 
-              <div className="field">
-                <FieldLabel>Confirmer le mot de passe</FieldLabel>
-                <input
-                  className="input"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                />
-              </div>
+                <form onSubmit={handleSubmit}>
+                  <div className="field">
+                    <FieldLabel>Nouveau mot de passe</FieldLabel>
+                    <input
+                      className="input"
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
 
-              <button className="btn btn-primary btn-full" type="submit" disabled={submitting}>
-                {submitting ? "Validation..." : "Définir le mot de passe"}
-              </button>
-            </form>
+                  <div className="field">
+                    <FieldLabel>Confirmer le mot de passe</FieldLabel>
+                    <input
+                      className="input"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
+
+                  <button className="btn btn-primary btn-full" type="submit" disabled={submitting}>
+                    {submitting ? "Validation..." : "Définir le mot de passe"}
+                  </button>
+                </form>
+              </>
+            )}
           </>
         )}
       </section>
@@ -1000,7 +1064,10 @@ function CreateEventView({
 }
 
 export default function App() {
-  const [isInviteFlow] = useState(() => window.location.hash.includes("type=invite"));
+  const [isInviteFlow] = useState(() => {
+    const params = readHashParams();
+    return params.get("type") === "invite" || params.has("error") || params.has("error_code");
+  });
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
