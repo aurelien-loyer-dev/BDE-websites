@@ -548,12 +548,11 @@ function readHashParams(): URLSearchParams {
   return new URLSearchParams(window.location.hash.replace(/^#/, ""));
 }
 
-function SetPasswordScreen() {
+function SetPasswordScreen({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
 
   const linkParams = readHashParams();
   const linkError =
@@ -583,7 +582,10 @@ function SetPasswordScreen() {
     }
 
     setSubmitting(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+      data: { has_password: true },
+    });
 
     if (updateError) {
       setError(updateError.message);
@@ -591,8 +593,8 @@ function SetPasswordScreen() {
       return;
     }
 
-    setDone(true);
     setSubmitting(false);
+    onDone();
   }
 
   return (
@@ -613,47 +615,41 @@ function SetPasswordScreen() {
           </>
         ) : (
           <>
-            <h1>Définir votre mot de passe</h1>
+            <h1>Créer mon mot de passe</h1>
 
-            {done ? (
-              <p>Mot de passe défini avec succès. Vous pouvez maintenant vous connecter.</p>
-            ) : (
-              <>
-                <p>Choisissez un mot de passe pour activer votre accès à l&apos;espace membres.</p>
+            <p>Choisissez un mot de passe pour activer votre accès à l&apos;espace membres.</p>
 
-                {error ? <div className="form-error">{error}</div> : null}
+            {error ? <div className="form-error">{error}</div> : null}
 
-                <form onSubmit={handleSubmit}>
-                  <div className="field">
-                    <FieldLabel>Nouveau mot de passe</FieldLabel>
-                    <input
-                      className="input"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                    />
-                  </div>
+            <form onSubmit={handleSubmit}>
+              <div className="field">
+                <FieldLabel>Nouveau mot de passe</FieldLabel>
+                <input
+                  className="input"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+              </div>
 
-                  <div className="field">
-                    <FieldLabel>Confirmer le mot de passe</FieldLabel>
-                    <input
-                      className="input"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                    />
-                  </div>
+              <div className="field">
+                <FieldLabel>Confirmer le mot de passe</FieldLabel>
+                <input
+                  className="input"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+              </div>
 
-                  <button className="btn btn-primary btn-full" type="submit" disabled={submitting}>
-                    {submitting ? "Validation..." : "Définir le mot de passe"}
-                  </button>
-                </form>
-              </>
-            )}
+              <button className="btn btn-primary btn-full" type="submit" disabled={submitting}>
+                {submitting ? "Validation..." : "Définir le mot de passe"}
+              </button>
+            </form>
           </>
         )}
       </section>
@@ -1318,6 +1314,7 @@ function ProfileView({ email }: { email: string | null }) {
 
 export default function App() {
   const [isInviteFlow, setIsInviteFlow] = useState(false);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
@@ -1353,11 +1350,13 @@ export default function App() {
       }
 
       setUserEmail(data.session?.user.email ?? null);
+      setNeedsPasswordSetup(Boolean(data.session?.user) && data.session?.user.user_metadata?.has_password !== true);
       setAuthLoading(false);
     }
 
     const { data } = client.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user.email ?? null);
+      setNeedsPasswordSetup(Boolean(session?.user) && session?.user.user_metadata?.has_password !== true);
       setAuthLoading(false);
     });
 
@@ -1468,6 +1467,12 @@ export default function App() {
     setUserEmail(null);
     setView("home");
     setSelectedEventId(null);
+  }
+
+  function handlePasswordCreated() {
+    setIsInviteFlow(false);
+    setNeedsPasswordSetup(false);
+    setView("home");
   }
 
   function openEdit(event: EventRecord) {
@@ -1636,8 +1641,8 @@ export default function App() {
     return <AuthCallbackScreen />;
   }
 
-  if (isInviteFlow) {
-    return <SetPasswordScreen />;
+  if (isInviteFlow || needsPasswordSetup) {
+    return <SetPasswordScreen onDone={handlePasswordCreated} />;
   }
 
   if (authLoading) {
