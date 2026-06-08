@@ -337,61 +337,20 @@ function readHashParams(): URLSearchParams {
   return new URLSearchParams(window.location.hash.replace(/^#/, ""));
 }
 
-type InviteSessionStatus = "checking" | "ready" | "error";
-
 function SetPasswordScreen() {
-  const [sessionStatus, setSessionStatus] = useState<InviteSessionStatus>("checking");
-  const [sessionError, setSessionError] = useState("");
-
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  useEffect(() => {
-    const params = readHashParams();
-
-    if (params.has("error") || params.has("error_code")) {
-      setSessionError(
-        params.get("error_code") === "otp_expired"
-          ? "Ce lien d'invitation a expiré. Demande un nouveau lien au bureau du BDE."
-          : "Ce lien d'invitation n'est plus valable. Demande un nouveau lien au bureau du BDE.",
-      );
-      setSessionStatus("error");
-      return;
-    }
-
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-
-    if (!accessToken || !refreshToken) {
-      setSessionError("Lien d'invitation incomplet ou invalide.");
-      setSessionStatus("error");
-      return;
-    }
-
-    if (!supabase) {
-      setSessionError("Connexion à Supabase indisponible.");
-      setSessionStatus("error");
-      return;
-    }
-
-    let active = true;
-    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error: setSessionErr }) => {
-      if (!active) return;
-      if (setSessionErr) {
-        setSessionError("Ce lien d'invitation a expiré. Demande un nouveau lien au bureau du BDE.");
-        setSessionStatus("error");
-        return;
-      }
-      setSessionStatus("ready");
-    });
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const linkParams = readHashParams();
+  const linkError =
+    linkParams.has("error") || linkParams.has("error_code")
+      ? linkParams.get("error_code") === "otp_expired"
+        ? "Ce lien d'invitation a expiré. Demande un nouveau lien au bureau du BDE."
+        : "Ce lien d'invitation n'est plus valable. Demande un nouveau lien au bureau du BDE."
+      : "";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -436,12 +395,10 @@ function SetPasswordScreen() {
           </div>
         </div>
 
-        {sessionStatus === "checking" ? (
-          <p>Vérification du lien d&apos;invitation...</p>
-        ) : sessionStatus === "error" ? (
+        {linkError ? (
           <>
             <h1>Lien invalide</h1>
-            <p>{sessionError}</p>
+            <p>{linkError}</p>
           </>
         ) : (
           <>
@@ -1064,9 +1021,9 @@ function CreateEventView({
 }
 
 export default function App() {
-  const [isInviteFlow] = useState(() => {
+  const [isInviteFlow, setIsInviteFlow] = useState(() => {
     const params = readHashParams();
-    return params.get("type") === "invite" || params.has("error") || params.has("error_code");
+    return params.has("error") || params.has("error_code");
   });
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -1106,7 +1063,10 @@ export default function App() {
       setAuthLoading(false);
     }
 
-    const { data } = client.auth.onAuthStateChange((_event, session) => {
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "INITIAL_SESSION" && session && readHashParams().get("type") === "invite")) {
+        setIsInviteFlow(true);
+      }
       setUserEmail(session?.user.email ?? null);
       setAuthLoading(false);
     });
