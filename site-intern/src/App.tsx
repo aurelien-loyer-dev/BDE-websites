@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { hasSupabaseConfig, supabase } from "./lib/supabase";
 import logoBDE from "./public/logoBDE.jpg";
 
-type View = "home" | "planning" | "detail" | "create";
+type View = "home" | "planning" | "detail" | "create" | "profile";
 type Visibility = "public" | "prive";
 
 type PriceItem = {
@@ -276,12 +276,50 @@ function AuthScreen({
   error: string;
   isLoading: boolean;
 }) {
+  const [mode, setMode] = useState<"password" | "magic">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const [magicEmail, setMagicEmail] = useState("");
+  const [magicError, setMagicError] = useState("");
+  const [magicSent, setMagicSent] = useState(false);
+  const [magicSubmitting, setMagicSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onAuthenticate(email, password);
+  }
+
+  async function handleMagicSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMagicError("");
+
+    const normalizedEmail = magicEmail.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setMagicError("Email requis.");
+      return;
+    }
+
+    if (!supabase) {
+      setMagicError("Connexion à Supabase indisponible.");
+      return;
+    }
+
+    setMagicSubmitting(true);
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: normalizedEmail,
+      options: { shouldCreateUser: false },
+    });
+
+    if (otpError) {
+      setMagicError(otpError.message);
+      setMagicSubmitting(false);
+      return;
+    }
+
+    setMagicSent(true);
+    setMagicSubmitting(false);
   }
 
   return (
@@ -295,39 +333,87 @@ function AuthScreen({
           </div>
         </div>
 
-        <h1>Connexion</h1>
+        {mode === "password" ? (
+          <>
+            <h1>Connexion</h1>
 
-        {error ? <div className="form-error">{error}</div> : null}
+            {error ? <div className="form-error">{error}</div> : null}
 
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <FieldLabel>Email</FieldLabel>
-            <input
-              className="input"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="prenom.nom@epitech.eu"
-              autoComplete="email"
-            />
-          </div>
+            <form onSubmit={handleSubmit}>
+              <div className="field">
+                <FieldLabel>Email</FieldLabel>
+                <input
+                  className="input"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="prenom.nom@epitech.eu"
+                  autoComplete="email"
+                />
+              </div>
 
-          <div className="field">
-            <FieldLabel>Mot de passe</FieldLabel>
-            <input
-              className="input"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
-          </div>
+              <div className="field">
+                <FieldLabel>Mot de passe</FieldLabel>
+                <input
+                  className="input"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+              </div>
 
-          <button className="btn btn-primary btn-full" type="submit" disabled={isLoading}>
-            {isLoading ? "Connexion..." : "Se connecter"}
-          </button>
-        </form>
+              <button className="btn btn-primary btn-full" type="submit" disabled={isLoading}>
+                {isLoading ? "Connexion..." : "Se connecter"}
+              </button>
+            </form>
+
+            <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
+              <button className="back-link" type="button" onClick={() => setMode("magic")}>
+                Première connexion ? Recevoir un lien magique
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            <h1>Lien magique</h1>
+
+            {magicSent ? (
+              <p>Vérifie ta boite mail : un lien de connexion vient de t&apos;être envoyé à {magicEmail.trim()}.</p>
+            ) : (
+              <>
+                <p>Indique ton email pour recevoir un lien de connexion sans mot de passe.</p>
+
+                {magicError ? <div className="form-error">{magicError}</div> : null}
+
+                <form onSubmit={handleMagicSubmit}>
+                  <div className="field">
+                    <FieldLabel>Email</FieldLabel>
+                    <input
+                      className="input"
+                      type="email"
+                      value={magicEmail}
+                      onChange={(event) => setMagicEmail(event.target.value)}
+                      placeholder="prenom.nom@epitech.eu"
+                      autoComplete="email"
+                    />
+                  </div>
+
+                  <button className="btn btn-primary btn-full" type="submit" disabled={magicSubmitting}>
+                    {magicSubmitting ? "Envoi..." : "Recevoir le lien magique"}
+                  </button>
+                </form>
+              </>
+            )}
+
+            <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
+              <button className="back-link" type="button" onClick={() => setMode("password")}>
+                <Icon name="back" /> Retour à la connexion
+              </button>
+            </p>
+          </>
+        )}
       </section>
     </main>
   );
@@ -454,6 +540,7 @@ function Navbar({ view, onNavigate, onLogout }: { view: View; onNavigate: (next:
   const items: Array<{ id: View; label: string }> = [
     { id: "home", label: "Accueil" },
     { id: "planning", label: "Planning" },
+    { id: "profile", label: "Profil" },
   ];
 
   return (
@@ -1020,6 +1107,90 @@ function CreateEventView({
   );
 }
 
+function ProfileView({ email }: { email: string | null }) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setSuccess(false);
+
+    if (password.trim().length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    if (!supabase) {
+      setError("Connexion à Supabase indisponible.");
+      return;
+    }
+
+    setSubmitting(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+
+    if (updateError) {
+      setError(updateError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    setPassword("");
+    setConfirmPassword("");
+    setSuccess(true);
+    setSubmitting(false);
+  }
+
+  return (
+    <section className="wrap form-shell">
+      <div className="page-kicker">Profil</div>
+      <h2>Changer mon mot de passe</h2>
+      {email ? <p className="muted-text">{email}</p> : null}
+
+      {error ? <div className="form-error">{error}</div> : null}
+      {success ? <p>Mot de passe mis à jour avec succès.</p> : null}
+
+      <form onSubmit={handleSubmit}>
+        <div className="field">
+          <FieldLabel>Nouveau mot de passe</FieldLabel>
+          <input
+            className="input"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+          />
+        </div>
+
+        <div className="field">
+          <FieldLabel>Confirmer le mot de passe</FieldLabel>
+          <input
+            className="input"
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+          />
+        </div>
+
+        <button className="btn btn-primary" type="submit" disabled={submitting}>
+          {submitting ? "Validation..." : "Mettre à jour le mot de passe"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
 export default function App() {
   const [isInviteFlow, setIsInviteFlow] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -1404,6 +1575,8 @@ export default function App() {
           saving={savingEvent}
         />
       ) : null}
+
+      {view === "profile" ? <ProfileView email={userEmail} /> : null}
 
       <footer className="footer wrap">
         <span>BDE Epitech Réunion</span>
