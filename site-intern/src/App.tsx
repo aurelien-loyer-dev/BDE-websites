@@ -1021,10 +1021,7 @@ function CreateEventView({
 }
 
 export default function App() {
-  const [isInviteFlow, setIsInviteFlow] = useState(() => {
-    const params = readHashParams();
-    return params.has("error") || params.has("error_code");
-  });
+  const [isInviteFlow, setIsInviteFlow] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
@@ -1063,10 +1060,7 @@ export default function App() {
       setAuthLoading(false);
     }
 
-    const { data } = client.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (event === "INITIAL_SESSION" && session && readHashParams().get("type") === "invite")) {
-        setIsInviteFlow(true);
-      }
+    const { data } = client.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user.email ?? null);
       setAuthLoading(false);
     });
@@ -1075,6 +1069,22 @@ export default function App() {
 
     return () => {
       active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (session && window.location.href.includes("type=invite"))) {
+        setIsInviteFlow(true);
+      }
+    });
+
+    return () => {
       data.subscription.unsubscribe();
     };
   }, []);
