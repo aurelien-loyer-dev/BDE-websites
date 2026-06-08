@@ -309,7 +309,7 @@ function AuthScreen({
     setMagicSubmitting(true);
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
-      options: { shouldCreateUser: false },
+      options: { shouldCreateUser: false, emailRedirectTo: "https://bde-intern.vercel.app/auth/callback" },
     });
 
     if (otpError) {
@@ -414,6 +414,43 @@ function AuthScreen({
             </p>
           </>
         )}
+      </section>
+    </main>
+  );
+}
+
+function AuthCallbackScreen() {
+  useEffect(() => {
+    let active = true;
+
+    async function exchange() {
+      if (supabase) {
+        await supabase.auth.exchangeCodeForSession(window.location.href);
+      }
+
+      if (active) {
+        window.location.replace("/");
+      }
+    }
+
+    exchange();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-panel">
+        <div className="brand-row">
+          <img src={logoBDE} className="brand-mark" alt="Logo BDE" />
+          <div>
+            <div className="brand-name">BDE Epitech Réunion</div>
+            <div className="brand-subtitle">Connexion en cours</div>
+          </div>
+        </div>
+        <p>Connexion en cours, redirection vers l&apos;accueil...</p>
       </section>
     </main>
   );
@@ -1505,6 +1542,10 @@ export default function App() {
 
     setUserEmail(normalizedEmail);
     setAuthSubmitting(false);
+  }
+
+  if (window.location.pathname === "/auth/callback") {
+    return <AuthCallbackScreen />;
   }
 
   if (isInviteFlow) {
