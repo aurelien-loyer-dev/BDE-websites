@@ -276,12 +276,80 @@ function AuthScreen({
   error: string;
   isLoading: boolean;
 }) {
+  const [mode, setMode] = useState<"login" | "otp-email" | "otp-code">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onAuthenticate(email, password);
+  }
+
+  async function handleOtpEmailSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setOtpError("");
+
+    const normalizedEmail = otpEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setOtpError("Email requis.");
+      return;
+    }
+
+    if (!supabase) {
+      setOtpError("Connexion à Supabase indisponible.");
+      return;
+    }
+
+    setOtpSubmitting(true);
+    const { error: otpErr } = await supabase.auth.signInWithOtp({
+      email: normalizedEmail,
+      options: { shouldCreateUser: false },
+    });
+
+    if (otpErr) {
+      setOtpError(otpErr.message);
+      setOtpSubmitting(false);
+      return;
+    }
+
+    setOtpSubmitting(false);
+    setMode("otp-code");
+  }
+
+  async function handleOtpCodeSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setOtpError("");
+
+    const token = otpCode.trim();
+    if (!token) {
+      setOtpError("Code requis.");
+      return;
+    }
+
+    if (!supabase) {
+      setOtpError("Connexion à Supabase indisponible.");
+      return;
+    }
+
+    setOtpSubmitting(true);
+    const { error: verifyErr } = await supabase.auth.verifyOtp({
+      email: otpEmail.trim().toLowerCase(),
+      token,
+      type: "email",
+    });
+
+    if (verifyErr) {
+      setOtpError(verifyErr.message);
+      setOtpSubmitting(false);
+      return;
+    }
+
+    setOtpSubmitting(false);
   }
 
   return (
@@ -295,39 +363,112 @@ function AuthScreen({
           </div>
         </div>
 
-        <h1>Connexion</h1>
+        {mode === "login" ? (
+          <>
+            <h1>Connexion</h1>
 
-        {error ? <div className="form-error">{error}</div> : null}
+            {error ? <div className="form-error">{error}</div> : null}
 
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <FieldLabel>Email</FieldLabel>
-            <input
-              className="input"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="prenom.nom@epitech.eu"
-              autoComplete="email"
-            />
-          </div>
+            <form onSubmit={handleSubmit}>
+              <div className="field">
+                <FieldLabel>Email</FieldLabel>
+                <input
+                  className="input"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="prenom.nom@epitech.eu"
+                  autoComplete="email"
+                />
+              </div>
 
-          <div className="field">
-            <FieldLabel>Mot de passe</FieldLabel>
-            <input
-              className="input"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
-          </div>
+              <div className="field">
+                <FieldLabel>Mot de passe</FieldLabel>
+                <input
+                  className="input"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+              </div>
 
-          <button className="btn btn-primary btn-full" type="submit" disabled={isLoading}>
-            {isLoading ? "Connexion..." : "Se connecter"}
-          </button>
-        </form>
+              <button className="btn btn-primary btn-full" type="submit" disabled={isLoading}>
+                {isLoading ? "Connexion..." : "Se connecter"}
+              </button>
+            </form>
+
+            <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
+              <button className="back-link" type="button" onClick={() => setMode("otp-email")}>
+                Première connexion
+              </button>
+            </p>
+          </>
+        ) : mode === "otp-email" ? (
+          <>
+            <h1>Première connexion</h1>
+            <p>Saisis ton email pour recevoir un code de connexion.</p>
+
+            {otpError ? <div className="form-error">{otpError}</div> : null}
+
+            <form onSubmit={handleOtpEmailSubmit}>
+              <div className="field">
+                <FieldLabel>Email</FieldLabel>
+                <input
+                  className="input"
+                  type="email"
+                  value={otpEmail}
+                  onChange={(event) => setOtpEmail(event.target.value)}
+                  placeholder="prenom.nom@epitech.eu"
+                  autoComplete="email"
+                />
+              </div>
+
+              <button className="btn btn-primary btn-full" type="submit" disabled={otpSubmitting}>
+                {otpSubmitting ? "Envoi..." : "Recevoir mon code"}
+              </button>
+            </form>
+
+            <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
+              <button className="back-link" type="button" onClick={() => setMode("login")}>
+                <Icon name="back" /> Retour à la connexion
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            <h1>Code de vérification</h1>
+            <p>Un code vient d&apos;être envoyé à {otpEmail.trim()}.</p>
+
+            {otpError ? <div className="form-error">{otpError}</div> : null}
+
+            <form onSubmit={handleOtpCodeSubmit}>
+              <div className="field">
+                <FieldLabel>Code reçu par mail</FieldLabel>
+                <input
+                  className="input"
+                  type="text"
+                  value={otpCode}
+                  onChange={(event) => setOtpCode(event.target.value)}
+                  placeholder="••••••"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                />
+              </div>
+
+              <button className="btn btn-primary btn-full" type="submit" disabled={otpSubmitting}>
+                {otpSubmitting ? "Validation..." : "Valider"}
+              </button>
+            </form>
+
+            <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
+              <button className="back-link" type="button" onClick={() => { setMode("otp-email"); setOtpCode(""); setOtpError(""); }}>
+                <Icon name="back" /> Renvoyer le code
+              </button>
+            </p>
+          </>
+        )}
       </section>
     </main>
   );
