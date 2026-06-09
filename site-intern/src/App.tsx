@@ -281,6 +281,7 @@ function AuthScreen({
   const [password, setPassword] = useState("");
 
   const [otpEmail, setOtpEmail] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState("");
   const [otpSubmitting, setOtpSubmitting] = useState(false);
@@ -318,7 +319,7 @@ function AuthScreen({
     }
 
     setOtpSubmitting(false);
-    setMode("otp-code");
+    setOtpSent(true);
   }
 
   async function handleOtpCodeSubmit(event: FormEvent<HTMLFormElement>) {
@@ -401,34 +402,46 @@ function AuthScreen({
 
             <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
               <button className="back-link" type="button" onClick={() => setMode("otp-email")}>
-                Première connexion
+                Première connexion ?
               </button>
             </p>
           </>
         ) : mode === "otp-email" ? (
           <>
             <h1>Première connexion</h1>
-            <p>Saisis ton email pour recevoir un code de connexion.</p>
 
-            {otpError ? <div className="form-error">{otpError}</div> : null}
+            {otpSent ? (
+              <>
+                <p>Code envoyé, vérifie ta boite mail.</p>
+                <button className="btn btn-primary btn-full" type="button" onClick={() => setMode("otp-code")}>
+                  Saisir mon code
+                </button>
+              </>
+            ) : (
+              <>
+                <p>Saisis ton email pour recevoir un code de connexion.</p>
 
-            <form onSubmit={handleOtpEmailSubmit}>
-              <div className="field">
-                <FieldLabel>Email</FieldLabel>
-                <input
-                  className="input"
-                  type="email"
-                  value={otpEmail}
-                  onChange={(event) => setOtpEmail(event.target.value)}
-                  placeholder="prenom.nom@epitech.eu"
-                  autoComplete="email"
-                />
-              </div>
+                {otpError ? <div className="form-error">{otpError}</div> : null}
 
-              <button className="btn btn-primary btn-full" type="submit" disabled={otpSubmitting}>
-                {otpSubmitting ? "Envoi..." : "Recevoir mon code"}
-              </button>
-            </form>
+                <form onSubmit={handleOtpEmailSubmit}>
+                  <div className="field">
+                    <FieldLabel>Email</FieldLabel>
+                    <input
+                      className="input"
+                      type="email"
+                      value={otpEmail}
+                      onChange={(event) => setOtpEmail(event.target.value)}
+                      placeholder="prenom.nom@epitech.eu"
+                      autoComplete="email"
+                    />
+                  </div>
+
+                  <button className="btn btn-primary btn-full" type="submit" disabled={otpSubmitting}>
+                    {otpSubmitting ? "Envoi..." : "Recevoir mon code"}
+                  </button>
+                </form>
+              </>
+            )}
 
             <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
               <button className="back-link" type="button" onClick={() => setMode("login")}>
@@ -439,13 +452,12 @@ function AuthScreen({
         ) : (
           <>
             <h1>Code de vérification</h1>
-            <p>Un code vient d&apos;être envoyé à {otpEmail.trim()}.</p>
 
             {otpError ? <div className="form-error">{otpError}</div> : null}
 
             <form onSubmit={handleOtpCodeSubmit}>
               <div className="field">
-                <FieldLabel>Code reçu par mail</FieldLabel>
+                <FieldLabel>Entre ton code à 6 chiffres</FieldLabel>
                 <input
                   className="input"
                   type="text"
@@ -463,7 +475,7 @@ function AuthScreen({
             </form>
 
             <p style={{ textAlign: "center", marginTop: 18, marginBottom: 0 }}>
-              <button className="back-link" type="button" onClick={() => { setMode("otp-email"); setOtpCode(""); setOtpError(""); }}>
+              <button className="back-link" type="button" onClick={() => { setOtpSent(false); setMode("otp-email"); setOtpCode(""); setOtpError(""); }}>
                 <Icon name="back" /> Renvoyer le code
               </button>
             </p>
@@ -474,23 +486,11 @@ function AuthScreen({
   );
 }
 
-function readHashParams(): URLSearchParams {
-  return new URLSearchParams(window.location.hash.replace(/^#/, ""));
-}
-
-function SetPasswordScreen({ onDone }: { onDone: () => void }) {
+function CreatePasswordScreen({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  const linkParams = readHashParams();
-  const linkError =
-    linkParams.has("error") || linkParams.has("error_code")
-      ? linkParams.get("error_code") === "otp_expired"
-        ? "Ce lien d'invitation a expiré. Demande un nouveau lien au bureau du BDE."
-        : "Ce lien d'invitation n'est plus valable. Demande un nouveau lien au bureau du BDE."
-      : "";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -538,50 +538,41 @@ function SetPasswordScreen({ onDone }: { onDone: () => void }) {
           </div>
         </div>
 
-        {linkError ? (
-          <>
-            <h1>Lien invalide</h1>
-            <p>{linkError}</p>
-          </>
-        ) : (
-          <>
-            <h1>Créer mon mot de passe</h1>
+        <h1>Crée ton mot de passe</h1>
 
-            <p>Choisissez un mot de passe pour activer votre accès à l&apos;espace membres.</p>
+        <p>Choisis un mot de passe pour accéder à l&apos;espace membres.</p>
 
-            {error ? <div className="form-error">{error}</div> : null}
+        {error ? <div className="form-error">{error}</div> : null}
 
-            <form onSubmit={handleSubmit}>
-              <div className="field">
-                <FieldLabel>Nouveau mot de passe</FieldLabel>
-                <input
-                  className="input"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                />
-              </div>
+        <form onSubmit={handleSubmit}>
+          <div className="field">
+            <FieldLabel>Mot de passe</FieldLabel>
+            <input
+              className="input"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
+          </div>
 
-              <div className="field">
-                <FieldLabel>Confirmer le mot de passe</FieldLabel>
-                <input
-                  className="input"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                />
-              </div>
+          <div className="field">
+            <FieldLabel>Confirmer le mot de passe</FieldLabel>
+            <input
+              className="input"
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
+          </div>
 
-              <button className="btn btn-primary btn-full" type="submit" disabled={submitting}>
-                {submitting ? "Validation..." : "Définir le mot de passe"}
-              </button>
-            </form>
-          </>
-        )}
+          <button className="btn btn-primary btn-full" type="submit" disabled={submitting}>
+            {submitting ? "Validation..." : "Créer mon mot de passe"}
+          </button>
+        </form>
       </section>
     </main>
   );
@@ -1158,7 +1149,6 @@ function CreateEventView({
 }
 
 export default function App() {
-  const [isInviteFlow, setIsInviteFlow] = useState(false);
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -1209,22 +1199,6 @@ export default function App() {
 
     return () => {
       active = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!supabase) {
-      return;
-    }
-
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (session && window.location.href.includes("type=invite"))) {
-        setIsInviteFlow(true);
-      }
-    });
-
-    return () => {
       data.subscription.unsubscribe();
     };
   }, []);
@@ -1315,7 +1289,6 @@ export default function App() {
   }
 
   function handlePasswordCreated() {
-    setIsInviteFlow(false);
     setNeedsPasswordSetup(false);
     setView("home");
   }
@@ -1482,8 +1455,8 @@ export default function App() {
     setAuthSubmitting(false);
   }
 
-  if (isInviteFlow || needsPasswordSetup) {
-    return <SetPasswordScreen onDone={handlePasswordCreated} />;
+  if (needsPasswordSetup) {
+    return <CreatePasswordScreen onDone={handlePasswordCreated} />;
   }
 
   if (authLoading) {
