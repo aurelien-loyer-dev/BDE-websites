@@ -1414,6 +1414,7 @@ function FormDetailView({ form, onBack }: { form: GFormRecord | undefined; onBac
             <div className="page-kicker">Stats</div>
             <div className="stats-grid">
               {headers.map((question, colIdx) => {
+                if (question.trim().toLowerCase() === "horodateur") return null;
                 const counts = columnCounts[colIdx] ?? {};
                 const uniqueCount = Object.keys(counts).length;
                 return (
