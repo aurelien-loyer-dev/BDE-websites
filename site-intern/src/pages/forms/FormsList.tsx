@@ -5,10 +5,19 @@ import { supabase } from "../../lib/supabase";
 import { Icon } from "../../components/Icon";
 import { FieldLabel } from "../../components/FieldLabel";
 
-function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void; onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [formUrl, setFormUrl] = useState("");
-  const [sheetId, setSheetId] = useState("");
+function FormModal({
+  existingForm,
+  onSave,
+  onClose,
+}: {
+  existingForm?: GFormRecord;
+  onSave: (form: GFormRecord) => void;
+  onClose: () => void;
+}) {
+  const isEditing = Boolean(existingForm);
+  const [name, setName] = useState(existingForm?.name ?? "");
+  const [formUrl, setFormUrl] = useState(existingForm?.google_form_url ?? "");
+  const [sheetId, setSheetId] = useState(existingForm?.spreadsheet_id ?? "");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,23 +35,36 @@ function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void
     if (!supabase) { setError("Connexion à Supabase indisponible."); return; }
 
     setSubmitting(true);
-    const { data, error: insertError } = await supabase
-      .from("forms")
-      .insert({ name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId })
-      .select()
-      .single();
 
-    if (insertError) { setError(insertError.message); setSubmitting(false); return; }
+    if (isEditing && existingForm) {
+      const { data, error: updateError } = await supabase
+        .from("forms")
+        .update({ name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId })
+        .eq("id", existingForm.id)
+        .select()
+        .single();
 
-    setSubmitting(false);
-    onSave(data as GFormRecord);
+      if (updateError) { setError(updateError.message); setSubmitting(false); return; }
+      setSubmitting(false);
+      onSave(data as GFormRecord);
+    } else {
+      const { data, error: insertError } = await supabase
+        .from("forms")
+        .insert({ name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId })
+        .select()
+        .single();
+
+      if (insertError) { setError(insertError.message); setSubmitting(false); return; }
+      setSubmitting(false);
+      onSave(data as GFormRecord);
+    }
   }
 
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-panel">
         <div className="modal-header">
-          <h2>Ajouter un formulaire</h2>
+          <h2>{isEditing ? "Modifier le formulaire" : "Ajouter un formulaire"}</h2>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Fermer">
             <Icon name="close" />
           </button>
@@ -90,7 +112,7 @@ function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void
           <div className="modal-actions" style={{ marginTop: 20 }}>
             <button className="btn" type="button" onClick={onClose}>Annuler</button>
             <button className="btn btn-primary" type="submit" disabled={submitting}>
-              {submitting ? "Enregistrement…" : "Enregistrer"}
+              {submitting ? "Enregistrement…" : isEditing ? "Mettre à jour" : "Enregistrer"}
             </button>
           </div>
         </form>
@@ -102,12 +124,26 @@ function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void
 export function FormsView({
   forms,
   onFormAdded,
+  onFormUpdated,
+  onFormDeleted,
 }: {
   forms: GFormRecord[];
   onFormAdded: (form: GFormRecord) => void;
+  onFormUpdated: (form: GFormRecord) => void;
+  onFormDeleted: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingForm, setEditingForm] = useState<GFormRecord | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function handleDelete(form: GFormRecord) {
+    if (!window.confirm(`Supprimer le formulaire "${form.name}" ?`)) return;
+    if (!supabase) return;
+    const { error } = await supabase.from("forms").delete().eq("id", form.id);
+    if (error) { setDeleteError(error.message); return; }
+    onFormDeleted(form.id);
+  }
 
   return (
     <>
@@ -122,6 +158,8 @@ export function FormsView({
               <Icon name="plus" /> Ajouter un formulaire
             </button>
           </div>
+
+          {deleteError ? <div className="form-error" style={{ marginBottom: 16 }}>{deleteError}</div> : null}
 
           {forms.length === 0 ? (
             <p className="muted-text">Aucun formulaire enregistré.</p>
@@ -139,9 +177,17 @@ export function FormsView({
                       })}
                     </span>
                   </div>
-                  <button className="btn btn-small" type="button" onClick={() => navigate(`/forms/${form.id}`)}>
-                    Voir les réponses
-                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn-small" type="button" onClick={() => navigate(`/forms/${form.id}`)}>
+                      Voir les réponses
+                    </button>
+                    <button className="btn btn-small" type="button" onClick={() => setEditingForm(form)}>
+                      <Icon name="edit" /> Modifier
+                    </button>
+                    <button className="btn btn-small btn-danger" type="button" onClick={() => handleDelete(form)}>
+                      <Icon name="trash" /> Supprimer
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -150,9 +196,17 @@ export function FormsView({
       </section>
 
       {showAddForm ? (
-        <AddFormModal
+        <FormModal
           onSave={(form) => { onFormAdded(form); setShowAddForm(false); }}
           onClose={() => setShowAddForm(false)}
+        />
+      ) : null}
+
+      {editingForm ? (
+        <FormModal
+          existingForm={editingForm}
+          onSave={(form) => { onFormUpdated(form); setEditingForm(null); }}
+          onClose={() => setEditingForm(null)}
         />
       ) : null}
     </>

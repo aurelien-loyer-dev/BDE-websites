@@ -130,7 +130,7 @@ export default function App() {
     async function loadForms() {
       const { data } = await supabase!
         .from("forms")
-        .select("id, name, spreadsheet_id, created_at")
+        .select("id, name, google_form_url, spreadsheet_id, created_at")
         .order("created_at", { ascending: false });
       setGForms((data as GFormRecord[]) ?? []);
     }
@@ -341,7 +341,7 @@ export default function App() {
         <Route path="/events/new" element={<CreateEventView onCreate={handleCreate} saving={savingEvent} />} />
         <Route path="/events/:id/edit" element={<CreateEventEditRoute events={events} onUpdate={handleUpdate} saving={savingEvent} />} />
         <Route path="/events/:id" element={<EventDetailRoute events={events} onDelete={handleDelete} longDateFormatter={formatters.longDate} />} />
-        <Route path="/forms" element={<FormsView forms={gForms} onFormAdded={(form) => setGForms((prev) => [form, ...prev])} />} />
+        <Route path="/forms" element={<FormsView forms={gForms} onFormAdded={(form) => setGForms((prev) => [form, ...prev])} onFormUpdated={(form) => setGForms((prev) => prev.map((f) => f.id === form.id ? form : f))} onFormDeleted={(id) => setGForms((prev) => prev.filter((f) => f.id !== id))} />} />
         <Route path="/forms/:id" element={<FormDetailRoute forms={gForms} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

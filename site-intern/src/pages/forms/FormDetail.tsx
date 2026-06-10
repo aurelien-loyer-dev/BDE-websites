@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { GFormRecord } from "../../types";
 import { Icon } from "../../components/Icon";
@@ -9,6 +9,31 @@ export function FormDetailView({ form }: { form: GFormRecord | undefined }) {
   const [sheetData, setSheetData] = useState<string[][]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
+  const [showConfig, setShowConfig] = useState(false);
+  const configPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!form) return;
+    try {
+      const stored = localStorage.getItem(`forms-stats-config-${form.id}`);
+      if (stored) setHiddenCols(new Set(JSON.parse(stored) as string[]));
+      else setHiddenCols(new Set());
+    } catch {
+      setHiddenCols(new Set());
+    }
+  }, [form?.id]);
+
+  useEffect(() => {
+    if (!showConfig) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (configPanelRef.current && !configPanelRef.current.contains(e.target as Node)) {
+        setShowConfig(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showConfig]);
 
   useEffect(() => {
     if (!form) return;
@@ -61,6 +86,20 @@ export function FormDetailView({ form }: { form: GFormRecord | undefined }) {
     });
   }
 
+  const configurableHeaders = headers.filter((h) => h.trim().toLowerCase() !== "horodateur");
+
+  function toggleCol(col: string) {
+    setHiddenCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(col)) next.delete(col);
+      else next.add(col);
+      try {
+        localStorage.setItem(`forms-stats-config-${form!.id}`, JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  }
+
   return (
     <section className="block">
       <div className="wrap">
@@ -86,10 +125,35 @@ export function FormDetailView({ form }: { form: GFormRecord | undefined }) {
           <p className="muted-text">Aucune réponse.</p>
         ) : (
           <>
-            <div className="page-kicker">Stats</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div className="page-kicker" style={{ marginBottom: 0 }}>Stats</div>
+              <div style={{ position: "relative" }} ref={configPanelRef}>
+                <button className="btn btn-small" type="button" onClick={() => setShowConfig((v) => !v)}>
+                  Configurer les stats
+                </button>
+                {showConfig && configurableHeaders.length > 0 && (
+                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "var(--surface, #fff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 8, padding: "12px 16px", zIndex: 50, minWidth: 220, boxShadow: "0 4px 16px rgba(0,0,0,.1)", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: ".05em", opacity: .6, marginBottom: 4 }}>Colonnes affichées</div>
+                    {configurableHeaders.map((col) => (
+                      <label key={col} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.9rem" }}>
+                        <input
+                          type="checkbox"
+                          checked={!hiddenCols.has(col)}
+                          onChange={() => toggleCol(col)}
+                          style={{ cursor: "pointer" }}
+                        />
+                        {col}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="stats-grid">
               {headers.map((question, colIdx) => {
                 if (question.trim().toLowerCase() === "horodateur") return null;
+                if (hiddenCols.has(question)) return null;
                 const counts = columnCounts[colIdx] ?? {};
                 const uniqueCount = Object.keys(counts).length;
                 return (
