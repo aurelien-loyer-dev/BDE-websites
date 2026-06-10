@@ -1187,30 +1187,28 @@ function BarChart({ counts }: { counts: Record<string, number> }) {
 
 function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void; onClose: () => void }) {
   const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
+  const [formUrl, setFormUrl] = useState("");
+  const [sheetId, setSheetId] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  function extractSpreadsheetId(raw: string): string | null {
-    const match = raw.match(/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : null;
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
     const trimmedName = name.trim();
-    const spreadsheetId = extractSpreadsheetId(url);
+    const trimmedFormUrl = formUrl.trim();
+    const trimmedSheetId = sheetId.trim();
 
-    if (!trimmedName) { setError("Nom requis."); return; }
-    if (!spreadsheetId) { setError("URL invalide. Colle l'URL de la feuille Google Sheets (docs.google.com/spreadsheets/d/…)."); return; }
+    if (!trimmedName) { setError("Le nom du formulaire est requis."); return; }
+    if (!trimmedFormUrl) { setError("L'URL Google Form est requise."); return; }
+    if (!trimmedSheetId) { setError("L'ID Google Sheet est requis."); return; }
     if (!supabase) { setError("Connexion à Supabase indisponible."); return; }
 
     setSubmitting(true);
     const { data, error: insertError } = await supabase
       .from("forms")
-      .insert({ name: trimmedName, spreadsheet_id: spreadsheetId })
+      .insert({ name: trimmedName, spreadsheet_id: trimmedSheetId })
       .select()
       .single();
 
@@ -1247,13 +1245,24 @@ function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void
             </div>
 
             <div className="field">
-              <FieldLabel>URL Google Sheets (feuille de réponses)</FieldLabel>
+              <FieldLabel>URL Google Form</FieldLabel>
               <input
                 className="input"
                 type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/…"
+                value={formUrl}
+                onChange={(e) => setFormUrl(e.target.value)}
+                placeholder="https://docs.google.com/forms/d/…"
+              />
+            </div>
+
+            <div className="field">
+              <FieldLabel>ID Google Sheet</FieldLabel>
+              <input
+                className="input"
+                type="text"
+                value={sheetId}
+                onChange={(e) => setSheetId(e.target.value)}
+                placeholder="Ex. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
               />
             </div>
           </div>
