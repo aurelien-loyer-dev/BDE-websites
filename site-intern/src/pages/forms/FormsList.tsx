@@ -125,11 +125,13 @@ export function FormsView({
   onFormAdded,
   onFormUpdated,
   onFormDeleted,
+  onRefetch,
 }: {
   forms: GFormRecord[];
   onFormAdded: (form: GFormRecord) => void;
   onFormUpdated: (form: GFormRecord) => void;
   onFormDeleted: (id: string) => void;
+  onRefetch: () => void;
 }) {
   const navigate = useNavigate();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -204,7 +206,7 @@ export function FormsView({
       {editingForm ? (
         <FormModal
           existingForm={editingForm}
-          onSave={(form) => { onFormUpdated(form); setEditingForm(null); }}
+          onSave={(form) => { onFormUpdated(form); setEditingForm(null); onRefetch(); }}
           onClose={() => setEditingForm(null)}
         />
       ) : null}
