@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { hasSupabaseConfig, supabase } from "./lib/supabase";
 import logoBDE from "./public/logoBDE.jpg";
 
-type View = "home" | "planning" | "detail" | "create";
+type View = "home" | "planning" | "detail" | "create" | "forms" | "form-detail";
 type Visibility = "public" | "prive";
 
 type PriceItem = {
@@ -37,6 +37,13 @@ type Registration = {
   last_name: string | null;
   email: string;
   cursus: string | null;
+  created_at: string;
+};
+
+type GFormRecord = {
+  id: string;
+  name: string;
+  spreadsheet_id: string;
   created_at: string;
 };
 
@@ -582,6 +589,7 @@ function Navbar({ view, onNavigate, onLogout }: { view: View; onNavigate: (next:
   const items: Array<{ id: View; label: string }> = [
     { id: "home", label: "Accueil" },
     { id: "planning", label: "Planning" },
+    { id: "forms", label: "Formulaires" },
   ];
 
   return (
@@ -614,6 +622,10 @@ function HomeView({ onNavigate }: { onNavigate: (next: View) => void }) {
           <button className="tool-card" type="button" onClick={() => onNavigate("create")}>
             <span className="tool-card-icon"><Icon name="plus" /></span>
             <span className="tool-card-label">Créer un événement</span>
+          </button>
+          <button className="tool-card" type="button" onClick={() => onNavigate("forms")}>
+            <span className="tool-card-icon"><Icon name="calendar" /></span>
+            <span className="tool-card-label">Formulaires</span>
           </button>
         </div>
       </div>
@@ -1148,6 +1160,287 @@ function CreateEventView({
   );
 }
 
+function BarChart({ counts }: { counts: Record<string, number> }) {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((sum, [, n]) => sum + n, 0);
+  return (
+    <div className="bar-chart">
+      {entries.map(([label, count]) => {
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        return (
+          <div key={label} className="bar-row">
+            <div className="bar-label-row">
+              <span className="bar-label-text">{label || "(vide)"}</span>
+              <span className="bar-value-label">{count} ({pct}%)</span>
+            </div>
+            <div className="bar-track">
+              <div className="bar-fill" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void; onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  function extractSpreadsheetId(raw: string): string | null {
+    const match = raw.match(/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    const trimmedName = name.trim();
+    const spreadsheetId = extractSpreadsheetId(url);
+
+    if (!trimmedName) { setError("Nom requis."); return; }
+    if (!spreadsheetId) { setError("URL invalide. Colle l'URL de la feuille Google Sheets (docs.google.com/spreadsheets/d/…)."); return; }
+    if (!supabase) { setError("Connexion à Supabase indisponible."); return; }
+
+    setSubmitting(true);
+    const { data, error: insertError } = await supabase
+      .from("forms")
+      .insert({ name: trimmedName, spreadsheet_id: spreadsheetId })
+      .select()
+      .single();
+
+    if (insertError) { setError(insertError.message); setSubmitting(false); return; }
+
+    setSubmitting(false);
+    onSave(data as GFormRecord);
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-panel">
+        <div className="modal-header">
+          <h2>Ajouter un formulaire</h2>
+          <button className="icon-button" type="button" onClick={onClose} aria-label="Fermer">
+            <Icon name="close" />
+          </button>
+        </div>
+
+        {error ? <div className="form-error">{error}</div> : null}
+
+        <form onSubmit={handleSubmit}>
+          <div className="modal-fields">
+            <div className="field">
+              <FieldLabel>Nom du formulaire</FieldLabel>
+              <input
+                className="input"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex. Inscription soirée"
+                autoFocus
+              />
+            </div>
+
+            <div className="field">
+              <FieldLabel>URL Google Sheets (feuille de réponses)</FieldLabel>
+              <input
+                className="input"
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/…"
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions" style={{ marginTop: 20 }}>
+            <button className="btn" type="button" onClick={onClose}>Annuler</button>
+            <button className="btn btn-primary" type="submit" disabled={submitting}>
+              {submitting ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function FormsView({
+  forms,
+  onOpenForm,
+  onAddForm,
+}: {
+  forms: GFormRecord[];
+  onOpenForm: (id: string) => void;
+  onAddForm: () => void;
+}) {
+  return (
+    <section className="block">
+      <div className="wrap">
+        <div className="section-head">
+          <div>
+            <div className="eyebrow">Outils</div>
+            <h2>Formulaires</h2>
+          </div>
+          <button className="btn btn-primary" type="button" onClick={onAddForm}>
+            <Icon name="plus" /> Ajouter un formulaire
+          </button>
+        </div>
+
+        {forms.length === 0 ? (
+          <p className="muted-text">Aucun formulaire enregistré.</p>
+        ) : (
+          <div className="forms-list">
+            {forms.map((form) => (
+              <div key={form.id} className="form-row">
+                <div className="form-row-info">
+                  <span className="form-row-name">{form.name}</span>
+                  <span className="form-row-date">
+                    {new Date(form.created_at).toLocaleDateString("fr-FR", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+                <button className="btn btn-small" type="button" onClick={() => onOpenForm(form.id)}>
+                  Voir les réponses
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function FormDetailView({ form, onBack }: { form: GFormRecord | undefined; onBack: () => void }) {
+  const [sheetData, setSheetData] = useState<string[][]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!form) return;
+
+    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined;
+    if (!apiKey) {
+      setError("Clé API Google manquante (VITE_GOOGLE_API_KEY).");
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadSheet() {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${form!.spreadsheet_id}/values/A1:Z1000?key=${apiKey}`
+        );
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (active) setError((json as { error?: { message?: string } })?.error?.message ?? `Erreur HTTP ${res.status}`);
+          return;
+        }
+        const json = await res.json() as { values?: string[][] };
+        if (active) setSheetData(json.values ?? []);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Erreur réseau.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadSheet();
+    return () => { active = false; };
+  }, [form]);
+
+  if (!form) return null;
+
+  const headers = sheetData[0] ?? [];
+  const rows = sheetData.slice(1);
+
+  const columnCounts: Record<number, Record<string, number>> = {};
+  for (const row of rows) {
+    row.forEach((cell, colIdx) => {
+      if (!columnCounts[colIdx]) columnCounts[colIdx] = {};
+      const val = cell.trim();
+      columnCounts[colIdx][val] = (columnCounts[colIdx][val] ?? 0) + 1;
+    });
+  }
+
+  return (
+    <section className="block">
+      <div className="wrap">
+        <button className="back-link" type="button" onClick={onBack}>
+          <Icon name="back" /> Retour aux formulaires
+        </button>
+
+        <div className="section-head" style={{ marginTop: 20 }}>
+          <div>
+            <div className="eyebrow">Formulaires</div>
+            <h2>{form.name}</h2>
+          </div>
+          {!loading && !error && (
+            <span className="muted-text">{rows.length} réponse{rows.length !== 1 ? "s" : ""}</span>
+          )}
+        </div>
+
+        {loading ? (
+          <p className="muted-text">Chargement des réponses…</p>
+        ) : error ? (
+          <div className="form-error">{error}</div>
+        ) : sheetData.length === 0 ? (
+          <p className="muted-text">Aucune réponse.</p>
+        ) : (
+          <>
+            <div className="page-kicker">Stats</div>
+            <div className="stats-grid">
+              {headers.map((question, colIdx) => {
+                const counts = columnCounts[colIdx] ?? {};
+                const uniqueCount = Object.keys(counts).length;
+                return (
+                  <div key={colIdx} className="stat-card">
+                    <div className="stat-card-question">{question}</div>
+                    {uniqueCount > 15 ? (
+                      <p className="stat-card-note">Réponses libres ({uniqueCount} valeurs uniques)</p>
+                    ) : (
+                      <BarChart counts={counts} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="page-kicker" style={{ marginTop: 40 }}>Tableau brut</div>
+            <div className="data-table-wrap" style={{ marginTop: 12 }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    {headers.map((h, i) => <th key={i}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i}>
+                      {headers.map((_, j) => <td key={j} title={row[j] ?? ""}>{row[j] ?? ""}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -1161,6 +1454,9 @@ export default function App() {
   const [eventsError, setEventsError] = useState("");
   const [savingEvent, setSavingEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventRecord | null>(null);
+  const [gForms, setGForms] = useState<GFormRecord[]>([]);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const formatters = useFormatters();
 
   useEffect(() => {
@@ -1254,6 +1550,20 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!supabase || !userEmail) return;
+
+    async function loadForms() {
+      const { data } = await supabase!
+        .from("forms")
+        .select("id, name, spreadsheet_id, created_at")
+        .order("created_at", { ascending: false });
+      setGForms((data as GFormRecord[]) ?? []);
+    }
+
+    loadForms();
+  }, [userEmail]);
+
   const sortedEvents = useMemo(
     () => [...events].sort((left, right) => left.date.localeCompare(right.date)),
     [events],
@@ -1296,6 +1606,12 @@ export default function App() {
   function openEdit(event: EventRecord) {
     setEditingEvent(event);
     setView("create");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openForm(id: string) {
+    setSelectedFormId(id);
+    setView("form-detail");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -1521,6 +1837,28 @@ export default function App() {
           onUpdate={handleUpdate}
           onCancel={() => { setEditingEvent(null); navigate(editingEvent ? "detail" : "planning"); }}
           saving={savingEvent}
+        />
+      ) : null}
+
+      {view === "forms" ? (
+        <FormsView
+          forms={gForms}
+          onOpenForm={openForm}
+          onAddForm={() => setShowAddForm(true)}
+        />
+      ) : null}
+
+      {view === "form-detail" ? (
+        <FormDetailView
+          form={gForms.find((f) => f.id === selectedFormId)}
+          onBack={() => navigate("forms")}
+        />
+      ) : null}
+
+      {showAddForm ? (
+        <AddFormModal
+          onSave={(form) => { setGForms((prev) => [form, ...prev]); setShowAddForm(false); }}
+          onClose={() => setShowAddForm(false)}
         />
       ) : null}
 
