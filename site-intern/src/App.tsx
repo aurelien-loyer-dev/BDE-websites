@@ -43,6 +43,7 @@ type Registration = {
 type GFormRecord = {
   id: string;
   name: string;
+  google_form_url: string;
   spreadsheet_id: string;
   created_at: string;
 };
@@ -1208,7 +1209,7 @@ function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void
     setSubmitting(true);
     const { data, error: insertError } = await supabase
       .from("forms")
-      .insert({ name: trimmedName, spreadsheet_id: trimmedSheetId })
+      .insert({ name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId })
       .select()
       .single();
 
