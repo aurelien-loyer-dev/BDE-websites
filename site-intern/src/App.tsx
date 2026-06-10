@@ -592,7 +592,6 @@ function Navbar({ view, onNavigate, onLogout }: { view: View; onNavigate: (next:
   const items: Array<{ id: View; label: string }> = [
     { id: "home", label: "Accueil" },
     { id: "planning", label: "Planning" },
-    { id: "forms", label: "Formulaires" },
   ];
 
   return (
