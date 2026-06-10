@@ -44,6 +44,7 @@ function FormModal({
         .eq("id", existingForm.id)
         .select();
 
+      console.log("[FormsList] update result", { data, error: updateError });
       if (updateError) { setError(updateError.message); setSubmitting(false); return; }
       setSubmitting(false);
       onSave((data?.[0] ?? existingForm) as GFormRecord);
