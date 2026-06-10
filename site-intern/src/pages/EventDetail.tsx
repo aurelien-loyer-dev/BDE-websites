@@ -33,6 +33,7 @@ export function EventDetailView({
   const [regError, setRegError] = useState("");
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [regDone, setRegDone] = useState(false);
+  const [showRegForm, setShowRegForm] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
   const isPast = !!event && event.date < today;
@@ -209,7 +210,7 @@ export function EventDetailView({
         <h3>Inscription</h3>
         {loadingReg ? null : isAlreadyRegistered || regDone ? (
           <div className="empty-inline">Vous êtes inscrit(e) à cet événement.</div>
-        ) : (
+        ) : showRegForm ? (
           <form onSubmit={handleRegister}>
             {regError ? <div className="form-error" style={{ marginBottom: 12 }}>{regError}</div> : null}
             <div className="signup-fields">
@@ -230,10 +231,19 @@ export function EventDetailView({
                 <input className="input" type="text" value={cursus} onChange={(e) => setCursus(e.target.value)} placeholder="Ex. B1 Informatique" />
               </div>
             </div>
-            <button className="btn btn-primary" type="submit" disabled={regSubmitting} style={{ marginTop: 16 }}>
-              {regSubmitting ? "Inscription en cours…" : "S'inscrire"}
-            </button>
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button className="btn btn-primary" type="submit" disabled={regSubmitting}>
+                {regSubmitting ? "Inscription en cours…" : "Confirmer l'inscription"}
+              </button>
+              <button className="btn" type="button" onClick={() => { setShowRegForm(false); setRegError(""); }}>
+                Annuler
+              </button>
+            </div>
           </form>
+        ) : (
+          <button className="btn btn-primary" type="button" onClick={() => setShowRegForm(true)}>
+            S&apos;inscrire
+          </button>
         )}
       </section>
 
