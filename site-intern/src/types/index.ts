@@ -1,3 +1,4 @@
+export type Role = "admin" | "member";
 export type Visibility = "public" | "prive";
 
 export type PriceItem = {

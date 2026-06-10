@@ -1,13 +1,14 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import logoBDE from "../public/logoBDE.jpg";
 
-export function Navbar({ onLogout }: { onLogout: () => void }) {
+export function Navbar({ onLogout, isAdmin }: { onLogout: () => void; isAdmin: boolean }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
   const items = [
     { path: "/", label: "Accueil" },
     { path: "/events", label: "Planning" },
+    ...(isAdmin ? [{ path: "/admin", label: "Admin" }] : []),
   ];
 
   function isActive(path: string) {

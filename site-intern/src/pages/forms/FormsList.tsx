@@ -126,12 +126,14 @@ export function FormsView({
   onFormUpdated,
   onFormDeleted,
   onRefetch,
+  isAdmin,
 }: {
   forms: GFormRecord[];
   onFormAdded: (form: GFormRecord) => void;
   onFormUpdated: (form: GFormRecord) => void;
   onFormDeleted: (id: string) => void;
   onRefetch: () => void;
+  isAdmin: boolean;
 }) {
   const navigate = useNavigate();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -155,9 +157,11 @@ export function FormsView({
               <div className="eyebrow">Outils</div>
               <h2>Formulaires</h2>
             </div>
-            <button className="btn btn-primary" type="button" onClick={() => setShowAddForm(true)}>
-              <Icon name="plus" /> Ajouter un formulaire
-            </button>
+            {isAdmin ? (
+              <button className="btn btn-primary" type="button" onClick={() => setShowAddForm(true)}>
+                <Icon name="plus" /> Ajouter un formulaire
+              </button>
+            ) : null}
           </div>
 
           {deleteError ? <div className="form-error" style={{ marginBottom: 16 }}>{deleteError}</div> : null}
@@ -182,12 +186,16 @@ export function FormsView({
                     <button className="btn btn-small" type="button" onClick={() => navigate(`/forms/${form.id}`)}>
                       Voir les réponses
                     </button>
-                    <button className="btn btn-small" type="button" onClick={() => setEditingForm(form)}>
-                      <Icon name="edit" /> Modifier
-                    </button>
-                    <button className="btn btn-small btn-danger" type="button" onClick={() => handleDelete(form)}>
-                      <Icon name="trash" /> Supprimer
-                    </button>
+                    {isAdmin ? (
+                      <>
+                        <button className="btn btn-small" type="button" onClick={() => setEditingForm(form)}>
+                          <Icon name="edit" /> Modifier
+                        </button>
+                        <button className="btn btn-small btn-danger" type="button" onClick={() => handleDelete(form)}>
+                          <Icon name="trash" /> Supprimer
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               ))}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import { hasSupabaseConfig, supabase } from "./lib/supabase";
 import { useFormatters } from "./lib/formatters";
-import type { EventRecord, GFormRecord, PriceItem, ScheduleItem, Visibility } from "./types";
+import type { EventRecord, GFormRecord, PriceItem, Role, ScheduleItem, Visibility } from "./types";
 import { Navbar } from "./components/Navbar";
 import { AuthScreen, CreatePasswordScreen } from "./pages/Auth";
 import { HomeView } from "./pages/Home";
@@ -11,6 +11,7 @@ import { EventDetailView } from "./pages/EventDetail";
 import { CreateEventView } from "./pages/CreateEvent";
 import { FormsView } from "./pages/forms/FormsList";
 import { FormDetailView } from "./pages/forms/FormDetail";
+import { AdminView } from "./pages/Admin";
 import logoBDE from "./public/logoBDE.jpg";
 
 const allowedEmails = (import.meta.env.VITE_ALLOWED_EMAILS as string | undefined)
@@ -18,10 +19,10 @@ const allowedEmails = (import.meta.env.VITE_ALLOWED_EMAILS as string | undefined
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean) ?? [];
 
-function EventDetailRoute({ events, onDelete, longDateFormatter }: { events: EventRecord[]; onDelete: (id: string) => void; longDateFormatter: Intl.DateTimeFormat }) {
+function EventDetailRoute({ events, onDelete, longDateFormatter, isAdmin }: { events: EventRecord[]; onDelete: (id: string) => void; longDateFormatter: Intl.DateTimeFormat; isAdmin: boolean }) {
   const { id } = useParams<{ id: string }>();
   const event = events.find((e) => e.id === id);
-  return <EventDetailView event={event} onDelete={onDelete} longDateFormatter={longDateFormatter} />;
+  return <EventDetailView event={event} onDelete={onDelete} longDateFormatter={longDateFormatter} isAdmin={isAdmin} />;
 }
 
 function CreateEventEditRoute({ events, onUpdate, saving }: { events: EventRecord[]; onUpdate: (event: EventRecord) => Promise<void>; saving: boolean }) {
@@ -41,6 +42,8 @@ export default function App() {
 
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [authError, setAuthError] = useState("");
@@ -65,11 +68,13 @@ export default function App() {
       if (!active) return;
       if (error) setAuthError(error.message);
       setUserEmail(data.session?.user.email ?? null);
+      setUserId(data.session?.user.id ?? null);
       setAuthLoading(false);
     }
 
     const { data } = client.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user.email ?? null);
+      setUserId(session?.user.id ?? null);
       setAuthLoading(false);
     });
 
@@ -138,6 +143,18 @@ export default function App() {
     refreshForms();
   }, [userEmail]);
 
+  useEffect(() => {
+    if (!supabase || !userId) { setRole(null); return; }
+    supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .single()
+      .then(({ data }) => setRole((data?.role as Role) ?? "member"));
+  }, [userId]);
+
+  const isAdmin = role === "admin";
+
   const sortedEvents = useMemo(
     () => [...events].sort((left, right) => left.date.localeCompare(right.date)),
     [events],
@@ -151,6 +168,8 @@ export default function App() {
   async function logout() {
     if (supabase) await supabase.auth.signOut();
     setUserEmail(null);
+    setUserId(null);
+    setRole(null);
     navigate("/");
   }
 
@@ -327,7 +346,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Navbar onLogout={logout} />
+      <Navbar onLogout={logout} isAdmin={isAdmin} />
 
       {eventsError ? (
         <div className="wrap" style={{ paddingTop: 18 }}>
@@ -336,13 +355,14 @@ export default function App() {
       ) : null}
 
       <Routes>
-        <Route path="/" element={<HomeView />} />
+        <Route path="/" element={<HomeView isAdmin={isAdmin} />} />
         <Route path="/events" element={<PlanningView events={sortedEvents} filter={filter} onFilterChange={setFilter} shortDateFormatter={formatters.shortDate} />} />
         <Route path="/events/new" element={<CreateEventView onCreate={handleCreate} saving={savingEvent} />} />
         <Route path="/events/:id/edit" element={<CreateEventEditRoute events={events} onUpdate={handleUpdate} saving={savingEvent} />} />
-        <Route path="/events/:id" element={<EventDetailRoute events={events} onDelete={handleDelete} longDateFormatter={formatters.longDate} />} />
-        <Route path="/forms" element={<FormsView forms={gForms} onFormAdded={(form) => setGForms((prev) => [form, ...prev])} onFormUpdated={(form) => setGForms((prev) => prev.map((f) => f.id === form.id ? form : f))} onFormDeleted={(id) => setGForms((prev) => prev.filter((f) => f.id !== id))} onRefetch={refreshForms} />} />
+        <Route path="/events/:id" element={<EventDetailRoute events={events} onDelete={handleDelete} longDateFormatter={formatters.longDate} isAdmin={isAdmin} />} />
+        <Route path="/forms" element={<FormsView forms={gForms} onFormAdded={(form) => setGForms((prev) => [form, ...prev])} onFormUpdated={(form) => setGForms((prev) => prev.map((f) => f.id === form.id ? form : f))} onFormDeleted={(id) => setGForms((prev) => prev.filter((f) => f.id !== id))} onRefetch={refreshForms} isAdmin={isAdmin} />} />
         <Route path="/forms/:id" element={<FormDetailRoute forms={gForms} />} />
+        <Route path="/admin" element={isAdmin ? <AdminView /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

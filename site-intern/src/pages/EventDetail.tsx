@@ -11,10 +11,12 @@ export function EventDetailView({
   event,
   onDelete,
   longDateFormatter,
+  isAdmin,
 }: {
   event: EventRecord | undefined;
   onDelete: (id: string) => void;
   longDateFormatter: Intl.DateTimeFormat;
+  isAdmin: boolean;
 }) {
   const navigate = useNavigate();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -62,14 +64,16 @@ export function EventDetailView({
             <button className="back-link" type="button" onClick={() => navigate("/events")}>
               <Icon name="back" /> Retour au planning
             </button>
-            <div className="detail-head-actions">
-              <button className="btn btn-small" type="button" onClick={() => navigate(`/events/${event.id}/edit`)}>
-                <Icon name="edit" /> Modifier
-              </button>
-              <button className="btn btn-small btn-danger" type="button" onClick={() => { if (window.confirm("Supprimer cet événement ?")) onDelete(event.id); }}>
-                <Icon name="trash" /> Supprimer
-              </button>
-            </div>
+            {isAdmin ? (
+              <div className="detail-head-actions">
+                <button className="btn btn-small" type="button" onClick={() => navigate(`/events/${event.id}/edit`)}>
+                  <Icon name="edit" /> Modifier
+                </button>
+                <button className="btn btn-small btn-danger" type="button" onClick={() => { if (window.confirm("Supprimer cet événement ?")) onDelete(event.id); }}>
+                  <Icon name="trash" /> Supprimer
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="detail-meta-row">
