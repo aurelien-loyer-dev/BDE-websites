@@ -37,6 +37,7 @@ function FormModal({
     setSubmitting(true);
 
     if (isEditing && existingForm) {
+      console.log("[FormsList] update", { id: existingForm.id, name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId });
       const { data, error: updateError } = await supabase
         .from("forms")
         .update({ name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId })
