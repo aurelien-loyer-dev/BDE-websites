@@ -41,12 +41,11 @@ function FormModal({
         .from("forms")
         .update({ name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId })
         .eq("id", existingForm.id)
-        .select()
-        .single();
+        .select();
 
       if (updateError) { setError(updateError.message); setSubmitting(false); return; }
       setSubmitting(false);
-      onSave(data as GFormRecord);
+      onSave((data?.[0] ?? existingForm) as GFormRecord);
     } else {
       const { data, error: insertError } = await supabase
         .from("forms")
