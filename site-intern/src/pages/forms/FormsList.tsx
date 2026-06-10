@@ -37,14 +37,12 @@ function FormModal({
     setSubmitting(true);
 
     if (isEditing && existingForm) {
-      console.log("[FormsList] update", { id: existingForm.id, name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId });
       const { data, error: updateError } = await supabase
         .from("forms")
         .update({ name: trimmedName, google_form_url: trimmedFormUrl, spreadsheet_id: trimmedSheetId })
         .eq("id", existingForm.id)
         .select();
 
-      console.log("[FormsList] update result", { data, error: updateError });
       if (updateError) { setError(updateError.message); setSubmitting(false); return; }
       setSubmitting(false);
       onSave((data?.[0] ?? existingForm) as GFormRecord);
