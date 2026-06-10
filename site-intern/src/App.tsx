@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import { hasSupabaseConfig, supabase } from "./lib/supabase";
 import { useFormatters } from "./lib/formatters";
-import type { EventRecord, GFormRecord, PriceItem, ScheduleItem, View, Visibility } from "./types";
+import type { EventRecord, GFormRecord, PriceItem, ScheduleItem, Visibility } from "./types";
 import { Navbar } from "./components/Navbar";
 import { AuthScreen, CreatePasswordScreen } from "./pages/Auth";
 import { HomeView } from "./pages/Home";
@@ -17,22 +18,37 @@ const allowedEmails = (import.meta.env.VITE_ALLOWED_EMAILS as string | undefined
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean) ?? [];
 
+function EventDetailRoute({ events, onDelete, longDateFormatter }: { events: EventRecord[]; onDelete: (id: string) => void; longDateFormatter: Intl.DateTimeFormat }) {
+  const { id } = useParams<{ id: string }>();
+  const event = events.find((e) => e.id === id);
+  return <EventDetailView event={event} onDelete={onDelete} longDateFormatter={longDateFormatter} />;
+}
+
+function CreateEventEditRoute({ events, onUpdate, saving }: { events: EventRecord[]; onUpdate: (event: EventRecord) => Promise<void>; saving: boolean }) {
+  const { id } = useParams<{ id: string }>();
+  const existingEvent = events.find((e) => e.id === id);
+  return <CreateEventView existingEvent={existingEvent} onUpdate={onUpdate} saving={saving} />;
+}
+
+function FormDetailRoute({ forms }: { forms: GFormRecord[] }) {
+  const { id } = useParams<{ id: string }>();
+  const form = forms.find((f) => f.id === id);
+  return <FormDetailView form={form} />;
+}
+
 export default function App() {
+  const navigate = useNavigate();
+
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [authError, setAuthError] = useState("");
-  const [view, setView] = useState<View>("home");
   const [events, setEvents] = useState<EventRecord[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Visibility>("all");
   const [eventsError, setEventsError] = useState("");
   const [savingEvent, setSavingEvent] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<EventRecord | null>(null);
   const [gForms, setGForms] = useState<GFormRecord[]>([]);
-  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
   const formatters = useFormatters();
 
   useEffect(() => {
@@ -42,20 +58,12 @@ export default function App() {
     }
 
     const client = supabase;
-
     let active = true;
 
     async function loadSession() {
       const { data, error } = await client.auth.getSession();
-
-      if (!active) {
-        return;
-      }
-
-      if (error) {
-        setAuthError(error.message);
-      }
-
+      if (!active) return;
+      if (error) setAuthError(error.message);
       setUserEmail(data.session?.user.email ?? null);
       setAuthLoading(false);
     }
@@ -74,12 +82,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!supabase) {
-      return;
-    }
+    if (!supabase) return;
 
     const client = supabase;
-
     let active = true;
 
     async function loadEvents() {
@@ -88,9 +93,7 @@ export default function App() {
         .select("id, title, date, time, location, description, price, extra_prices, places, visibility, schedule, activities")
         .order("date", { ascending: true });
 
-      if (!active) {
-        return;
-      }
+      if (!active) return;
 
       if (error) {
         setEventsError(error.message);
@@ -118,10 +121,7 @@ export default function App() {
     }
 
     loadEvents();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -143,50 +143,20 @@ export default function App() {
     [events],
   );
 
-  const selectedEvent = useMemo(
-    () => events.find((event) => event.id === selectedEventId),
-    [events, selectedEventId],
-  );
-
-  function navigate(nextView: View) {
-    setView(nextView);
-    if (nextView !== "detail") {
-      setSelectedEventId(null);
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function openEvent(id: string) {
-    setSelectedEventId(id);
-    setView("detail");
+  function go(path: string) {
+    navigate(path);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function logout() {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-
+    if (supabase) await supabase.auth.signOut();
     setUserEmail(null);
-    setView("home");
-    setSelectedEventId(null);
+    navigate("/");
   }
 
   function handlePasswordCreated() {
     setNeedsPasswordSetup(false);
-    setView("home");
-  }
-
-  function openEdit(event: EventRecord) {
-    setEditingEvent(event);
-    setView("create");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function openForm(id: string) {
-    setSelectedFormId(id);
-    setView("form-detail");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigate("/");
   }
 
   async function handleDelete(id: string) {
@@ -195,12 +165,11 @@ export default function App() {
       if (error) { setEventsError(error.message); return; }
     }
     setEvents((current) => current.filter((e) => e.id !== id));
-    navigate("planning");
+    go("/events");
   }
 
   async function handleUpdate(event: EventRecord) {
     setSavingEvent(true);
-
     let nextEvent = event;
 
     if (supabase) {
@@ -244,16 +213,12 @@ export default function App() {
     }
 
     setEvents((current) => current.map((e) => e.id === nextEvent.id ? nextEvent : e));
-    setSelectedEventId(nextEvent.id);
-    setEditingEvent(null);
-    setView("detail");
     setSavingEvent(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    go(`/events/${nextEvent.id}`);
   }
 
   async function handleCreate(event: EventRecord) {
     setSavingEvent(true);
-
     let nextEvent = event;
 
     if (supabase) {
@@ -275,11 +240,7 @@ export default function App() {
         .select("id, title, date, time, location, description, price, extra_prices, places, visibility, schedule, activities")
         .single();
 
-      if (error) {
-        setEventsError(error.message);
-        setSavingEvent(false);
-        return;
-      }
+      if (error) { setEventsError(error.message); setSavingEvent(false); return; }
 
       if (data) {
         nextEvent = {
@@ -300,15 +261,12 @@ export default function App() {
     }
 
     setEvents((current) => [nextEvent, ...current]);
-    setSelectedEventId(nextEvent.id);
-    setView("detail");
     setSavingEvent(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    go(`/events/${nextEvent.id}`);
   }
 
   async function handleAuthenticate(email: string, password: string) {
     const normalizedEmail = email.trim().toLowerCase();
-
     setAuthError("");
 
     if (!normalizedEmail || !password.trim()) {
@@ -319,10 +277,7 @@ export default function App() {
     setAuthSubmitting(true);
 
     if (supabase) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
 
       if (error) {
         setAuthError(error.message);
@@ -372,7 +327,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Navbar view={view} onNavigate={navigate} onLogout={logout} />
+      <Navbar onLogout={logout} />
 
       {eventsError ? (
         <div className="wrap" style={{ paddingTop: 18 }}>
@@ -380,57 +335,16 @@ export default function App() {
         </div>
       ) : null}
 
-      {view === "home" ? (
-        <HomeView onNavigate={navigate} />
-      ) : null}
-
-      {view === "planning" ? (
-        <PlanningView
-          events={sortedEvents}
-          filter={filter}
-          onFilterChange={setFilter}
-          onOpenEvent={openEvent}
-          shortDateFormatter={formatters.shortDate}
-        />
-      ) : null}
-
-      {view === "detail" ? (
-        <EventDetailView
-          event={selectedEvent}
-          onBack={() => navigate("planning")}
-          onEdit={openEdit}
-          onDelete={handleDelete}
-          longDateFormatter={formatters.longDate}
-        />
-      ) : null}
-
-      {view === "create" ? (
-        <CreateEventView
-          existingEvent={editingEvent ?? undefined}
-          onCreate={handleCreate}
-          onUpdate={handleUpdate}
-          onCancel={() => { setEditingEvent(null); navigate(editingEvent ? "detail" : "planning"); }}
-          saving={savingEvent}
-        />
-      ) : null}
-
-      {view === "forms" ? (
-        <FormsView
-          forms={gForms}
-          onOpenForm={openForm}
-          onAddForm={() => setShowAddForm(true)}
-          showAddForm={showAddForm}
-          onFormAdded={(form) => { setGForms((prev) => [form, ...prev]); setShowAddForm(false); }}
-          onCloseAddForm={() => setShowAddForm(false)}
-        />
-      ) : null}
-
-      {view === "form-detail" ? (
-        <FormDetailView
-          form={gForms.find((f) => f.id === selectedFormId)}
-          onBack={() => navigate("forms")}
-        />
-      ) : null}
+      <Routes>
+        <Route path="/" element={<HomeView />} />
+        <Route path="/events" element={<PlanningView events={sortedEvents} filter={filter} onFilterChange={setFilter} shortDateFormatter={formatters.shortDate} />} />
+        <Route path="/events/new" element={<CreateEventView onCreate={handleCreate} saving={savingEvent} />} />
+        <Route path="/events/:id/edit" element={<CreateEventEditRoute events={events} onUpdate={handleUpdate} saving={savingEvent} />} />
+        <Route path="/events/:id" element={<EventDetailRoute events={events} onDelete={handleDelete} longDateFormatter={formatters.longDate} />} />
+        <Route path="/forms" element={<FormsView forms={gForms} onFormAdded={(form) => setGForms((prev) => [form, ...prev])} />} />
+        <Route path="/forms/:id" element={<FormDetailRoute forms={gForms} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
 
       <footer className="footer wrap">
         <span>BDE Epitech Réunion</span>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { GFormRecord } from "../../types";
 import { Icon } from "../../components/Icon";
 import { BarChart } from "../../components/BarChart";
 
-export function FormDetailView({ form, onBack }: { form: GFormRecord | undefined; onBack: () => void }) {
+export function FormDetailView({ form }: { form: GFormRecord | undefined }) {
+  const navigate = useNavigate();
   const [sheetData, setSheetData] = useState<string[][]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,7 +64,7 @@ export function FormDetailView({ form, onBack }: { form: GFormRecord | undefined
   return (
     <section className="block">
       <div className="wrap">
-        <button className="back-link" type="button" onClick={onBack}>
+        <button className="back-link" type="button" onClick={() => navigate("/forms")}>
           <Icon name="back" /> Retour aux formulaires
         </button>
 

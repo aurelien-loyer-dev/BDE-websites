@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { EventRecord, Registration } from "../types";
 import { supabase } from "../lib/supabase";
 import { Badge } from "../components/Badge";
@@ -8,17 +9,14 @@ import { formatLongDate, formatDayLabel, formatPrice } from "../lib/formatters";
 
 export function EventDetailView({
   event,
-  onBack,
-  onEdit,
   onDelete,
   longDateFormatter,
 }: {
   event: EventRecord | undefined;
-  onBack: () => void;
-  onEdit: (event: EventRecord) => void;
   onDelete: (id: string) => void;
   longDateFormatter: Intl.DateTimeFormat;
 }) {
+  const navigate = useNavigate();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loadingReg, setLoadingReg] = useState(false);
 
@@ -61,11 +59,11 @@ export function EventDetailView({
       <section className="detail-head">
         <div className="wrap">
           <div className="detail-head-top">
-            <button className="back-link" type="button" onClick={onBack}>
+            <button className="back-link" type="button" onClick={() => navigate("/events")}>
               <Icon name="back" /> Retour au planning
             </button>
             <div className="detail-head-actions">
-              <button className="btn btn-small" type="button" onClick={() => onEdit(event)}>
+              <button className="btn btn-small" type="button" onClick={() => navigate(`/events/${event.id}/edit`)}>
                 <Icon name="edit" /> Modifier
               </button>
               <button className="btn btn-small btn-danger" type="button" onClick={() => { if (window.confirm("Supprimer cet événement ?")) onDelete(event.id); }}>
@@ -127,7 +125,6 @@ export function EventDetailView({
         <aside>
           <div className="info-card">
             <DetailStat icon={<Icon name="calendar" />} label="Date" value={formatLongDate(event.date, longDateFormatter)} />
-
             <DetailStat icon={<Icon name="clock" />} label="Heure" value={event.time || "À définir"} />
             <DetailStat icon={<Icon name="pin" />} label="Lieu" value={event.location || "À définir"} />
             <DetailStat icon={<Icon name="euro" />} label="Tarif d'entrée" value={formatPrice(event.entryPrice)} valueClassName={event.entryPrice === 0 ? "price-free" : ""} />
@@ -142,7 +139,6 @@ export function EventDetailView({
               </div>
             ) : null}
             <DetailStat icon={<Icon name="users" />} label="Places" value={event.places > 0 ? `${event.places} disponibles` : "Non limité"} />
-
             <DetailStat icon={<Icon name="users" />} label="Inscrits" value={`${registrations.length}`} />
           </div>
         </aside>

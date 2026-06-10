@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { EventRecord, FormState, PriceItem, ScheduleItem } from "../types";
 import { Icon } from "../components/Icon";
 import { FieldLabel } from "../components/FieldLabel";
@@ -18,16 +19,15 @@ const emptyForm: FormState = {
 export function CreateEventView({
   onCreate,
   onUpdate,
-  onCancel,
   saving,
   existingEvent,
 }: {
   onCreate?: (event: EventRecord) => Promise<void>;
   onUpdate?: (event: EventRecord) => Promise<void>;
-  onCancel: () => void;
   saving: boolean;
   existingEvent?: EventRecord;
 }) {
+  const navigate = useNavigate();
   const isEditing = Boolean(existingEvent);
 
   const [form, setForm] = useState<FormState>(() =>
@@ -49,6 +49,15 @@ export function CreateEventView({
   const [activities, setActivities] = useState<string[]>(existingEvent?.activities ?? []);
   const [activityInput, setActivityInput] = useState("");
   const [error, setError] = useState("");
+
+  function handleCancel() {
+    if (existingEvent) {
+      navigate(`/events/${existingEvent.id}`);
+    } else {
+      navigate("/events");
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -82,12 +91,10 @@ export function CreateEventView({
 
   function addActivity() {
     const value = activityInput.trim();
-
     if (!value || activities.includes(value)) {
       setActivityInput("");
       return;
     }
-
     setActivities((current) => [...current, value]);
     setActivityInput("");
   }
@@ -136,7 +143,7 @@ export function CreateEventView({
 
   return (
     <section className="wrap form-shell">
-      <button className="back-link" type="button" onClick={onCancel}>
+      <button className="back-link" type="button" onClick={handleCancel}>
         <Icon name="back" /> Annuler
       </button>
 
@@ -283,7 +290,7 @@ export function CreateEventView({
           <button className="btn btn-primary" type="submit" disabled={saving}>
             {saving ? "Enregistrement..." : isEditing ? "Mettre à jour" : "Publier l'événement"}
           </button>
-          <button className="btn" type="button" onClick={onCancel}>
+          <button className="btn" type="button" onClick={handleCancel}>
             Annuler
           </button>
         </div>

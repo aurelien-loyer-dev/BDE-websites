@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { EventRecord, Visibility } from "../types";
 import { EventCard } from "../components/EventCard";
 
@@ -5,15 +6,15 @@ export function PlanningView({
   events,
   filter,
   onFilterChange,
-  onOpenEvent,
   shortDateFormatter,
 }: {
   events: EventRecord[];
   filter: "all" | Visibility;
   onFilterChange: (next: "all" | Visibility) => void;
-  onOpenEvent: (id: string) => void;
   shortDateFormatter: Intl.DateTimeFormat;
 }) {
+  const navigate = useNavigate();
+
   const filters: Array<{ id: "all" | Visibility; label: string }> = [
     { id: "all", label: "Tous" },
     { id: "public", label: "Public" },
@@ -56,7 +57,7 @@ export function PlanningView({
             {upcoming.length > 0 ? (
               <div className="list-grid">
                 {upcoming.map((event) => (
-                  <EventCard key={event.id} event={event} shortDateFormatter={shortDateFormatter} onOpen={() => onOpenEvent(event.id)} />
+                  <EventCard key={event.id} event={event} shortDateFormatter={shortDateFormatter} onOpen={() => navigate(`/events/${event.id}`)} />
                 ))}
               </div>
             ) : (
@@ -68,7 +69,7 @@ export function PlanningView({
                 <h3 className="planning-group-title planning-group-title-past">Passés</h3>
                 <div className="list-grid">
                   {past.map((event) => (
-                    <EventCard key={event.id} event={event} shortDateFormatter={shortDateFormatter} onOpen={() => onOpenEvent(event.id)} past />
+                    <EventCard key={event.id} event={event} shortDateFormatter={shortDateFormatter} onOpen={() => navigate(`/events/${event.id}`)} past />
                   ))}
                 </div>
               </>

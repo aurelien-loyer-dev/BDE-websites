@@ -1,4 +1,3 @@
-export type View = "home" | "planning" | "detail" | "create" | "forms" | "form-detail";
 export type Visibility = "public" | "prive";
 
 export type PriceItem = {

@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { GFormRecord } from "../../types";
 import { supabase } from "../../lib/supabase";
 import { Icon } from "../../components/Icon";
@@ -100,19 +101,14 @@ function AddFormModal({ onSave, onClose }: { onSave: (form: GFormRecord) => void
 
 export function FormsView({
   forms,
-  onOpenForm,
-  onAddForm,
-  showAddForm,
   onFormAdded,
-  onCloseAddForm,
 }: {
   forms: GFormRecord[];
-  onOpenForm: (id: string) => void;
-  onAddForm: () => void;
-  showAddForm: boolean;
   onFormAdded: (form: GFormRecord) => void;
-  onCloseAddForm: () => void;
 }) {
+  const navigate = useNavigate();
+  const [showAddForm, setShowAddForm] = useState(false);
+
   return (
     <>
       <section className="block">
@@ -122,7 +118,7 @@ export function FormsView({
               <div className="eyebrow">Outils</div>
               <h2>Formulaires</h2>
             </div>
-            <button className="btn btn-primary" type="button" onClick={onAddForm}>
+            <button className="btn btn-primary" type="button" onClick={() => setShowAddForm(true)}>
               <Icon name="plus" /> Ajouter un formulaire
             </button>
           </div>
@@ -143,7 +139,7 @@ export function FormsView({
                       })}
                     </span>
                   </div>
-                  <button className="btn btn-small" type="button" onClick={() => onOpenForm(form.id)}>
+                  <button className="btn btn-small" type="button" onClick={() => navigate(`/forms/${form.id}`)}>
                     Voir les réponses
                   </button>
                 </div>
@@ -155,8 +151,8 @@ export function FormsView({
 
       {showAddForm ? (
         <AddFormModal
-          onSave={onFormAdded}
-          onClose={onCloseAddForm}
+          onSave={(form) => { onFormAdded(form); setShowAddForm(false); }}
+          onClose={() => setShowAddForm(false)}
         />
       ) : null}
     </>
