@@ -222,7 +222,7 @@ export function EventDetailView({
                   </div>
                   <div className="field">
                     <FieldLabel>Cursus <span className="muted-text">(optionnel)</span></FieldLabel>
-                    <input className="input" type="text" value={cursus} onChange={(e) => setCursus(e.target.value)} placeholder="Ex. B1 Informatique" />
+                    <input className="input" type="text" value={cursus} onChange={(e) => setCursus(e.target.value)} placeholder="Ex. PGE3, BACH2" />
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
