@@ -19,10 +19,10 @@ const allowedEmails = (import.meta.env.VITE_ALLOWED_EMAILS as string | undefined
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean) ?? [];
 
-function EventDetailRoute({ events, onDelete, longDateFormatter, isAdmin }: { events: EventRecord[]; onDelete: (id: string) => void; longDateFormatter: Intl.DateTimeFormat; isAdmin: boolean }) {
+function EventDetailRoute({ events, onDelete, longDateFormatter, isAdmin, userEmail, userId }: { events: EventRecord[]; onDelete: (id: string) => void; longDateFormatter: Intl.DateTimeFormat; isAdmin: boolean; userEmail: string; userId: string | null }) {
   const { id } = useParams<{ id: string }>();
   const event = events.find((e) => e.id === id);
-  return <EventDetailView event={event} onDelete={onDelete} longDateFormatter={longDateFormatter} isAdmin={isAdmin} />;
+  return <EventDetailView event={event} onDelete={onDelete} longDateFormatter={longDateFormatter} isAdmin={isAdmin} userEmail={userEmail} userId={userId} />;
 }
 
 function CreateEventEditRoute({ events, onUpdate, saving }: { events: EventRecord[]; onUpdate: (event: EventRecord) => Promise<void>; saving: boolean }) {
@@ -359,7 +359,7 @@ export default function App() {
         <Route path="/events" element={<PlanningView events={sortedEvents} filter={filter} onFilterChange={setFilter} shortDateFormatter={formatters.shortDate} />} />
         <Route path="/events/new" element={<CreateEventView onCreate={handleCreate} saving={savingEvent} />} />
         <Route path="/events/:id/edit" element={<CreateEventEditRoute events={events} onUpdate={handleUpdate} saving={savingEvent} />} />
-        <Route path="/events/:id" element={<EventDetailRoute events={events} onDelete={handleDelete} longDateFormatter={formatters.longDate} isAdmin={isAdmin} />} />
+        <Route path="/events/:id" element={<EventDetailRoute events={events} onDelete={handleDelete} longDateFormatter={formatters.longDate} isAdmin={isAdmin} userEmail={userEmail ?? ""} userId={userId} />} />
         <Route path="/forms" element={<FormsView forms={gForms} onFormAdded={(form) => setGForms((prev) => [form, ...prev])} onFormUpdated={(form) => setGForms((prev) => prev.map((f) => f.id === form.id ? form : f))} onFormDeleted={(id) => setGForms((prev) => prev.filter((f) => f.id !== id))} onRefetch={refreshForms} isAdmin={isAdmin} />} />
         <Route path="/forms/:id" element={<FormDetailRoute forms={gForms} />} />
         <Route path="/admin" element={isAdmin ? <AdminView /> : <Navigate to="/" replace />} />

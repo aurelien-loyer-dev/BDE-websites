@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { EventRecord, Registration } from "../types";
 import { supabase } from "../lib/supabase";
 import { Badge } from "../components/Badge";
 import { Icon } from "../components/Icon";
 import { DetailStat } from "../components/DetailStat";
+import { FieldLabel } from "../components/FieldLabel";
 import { formatLongDate, formatDayLabel, formatPrice } from "../lib/formatters";
 
 export function EventDetailView({
@@ -12,18 +13,44 @@ export function EventDetailView({
   onDelete,
   longDateFormatter,
   isAdmin,
+  userEmail,
+  userId,
 }: {
   event: EventRecord | undefined;
   onDelete: (id: string) => void;
   longDateFormatter: Intl.DateTimeFormat;
   isAdmin: boolean;
+  userEmail: string;
+  userId: string | null;
 }) {
   const navigate = useNavigate();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loadingReg, setLoadingReg] = useState(false);
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [cursus, setCursus] = useState("");
+  const [regError, setRegError] = useState("");
+  const [regSubmitting, setRegSubmitting] = useState(false);
+  const [regDone, setRegDone] = useState(false);
+
   const today = new Date().toISOString().slice(0, 10);
   const isPast = !!event && event.date < today;
+
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", userId)
+      .single()
+      .then(({ data }) => {
+        if (!data?.full_name) return;
+        const parts = (data.full_name as string).trim().split(/\s+/);
+        setFirstName(parts[0] ?? "");
+        setLastName(parts.slice(1).join(" "));
+      });
+  }, [userId]);
 
   useEffect(() => {
     if (!supabase || !event) return;
@@ -39,6 +66,36 @@ export function EventDetailView({
         setLoadingReg(false);
       });
   }, [event?.id]);
+
+  const isAlreadyRegistered = registrations.some((r) => r.email === userEmail);
+
+  async function handleRegister(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setRegError("");
+    const trimFirst = firstName.trim();
+    if (!trimFirst) { setRegError("Le prénom est requis."); return; }
+    if (!supabase) { setRegError("Connexion indisponible."); return; }
+    if (registrations.some((r) => r.email === userEmail)) {
+      setRegError("Vous êtes déjà inscrit(e) à cet événement.");
+      return;
+    }
+    setRegSubmitting(true);
+    const { data, error } = await supabase
+      .from("event_signups")
+      .insert({
+        event_id: event!.id,
+        first_name: trimFirst,
+        last_name: lastName.trim() || null,
+        email: userEmail,
+        cursus: cursus.trim() || null,
+      })
+      .select("id, first_name, last_name, email, cursus, created_at")
+      .single();
+    if (error) { setRegError(error.message); setRegSubmitting(false); return; }
+    setRegistrations((prev) => [...prev, data as Registration]);
+    setRegSubmitting(false);
+    setRegDone(true);
+  }
 
   async function deleteRegistration(id: string) {
     if (!supabase) return;
@@ -149,52 +206,86 @@ export function EventDetailView({
       </section>
 
       <section className="wrap registrations-section">
-        <div className="registrations-header">
-          <h3>Inscriptions</h3>
-          <span className="registrations-count">{registrations.length} inscrit{registrations.length !== 1 ? "s" : ""}</span>
-        </div>
-
-        {loadingReg ? (
-          <div className="loading-shell">Chargement…</div>
-        ) : registrations.length === 0 ? (
-          <div className="empty-inline">Aucune inscription pour le moment.</div>
+        <h3>Inscription</h3>
+        {loadingReg ? null : isAlreadyRegistered || regDone ? (
+          <div className="empty-inline">Vous êtes inscrit(e) à cet événement.</div>
         ) : (
-          <div className="registrations-table-wrap">
-            <table className="registrations-table">
-              <thead>
-                <tr>
-                  <th>Prénom</th>
-                  <th>Nom</th>
-                  <th>Email</th>
-                  <th>Cursus</th>
-                  <th>Inscrit le</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {registrations.map((reg) => (
-                  <tr key={reg.id}>
-                    <td>{reg.first_name}</td>
-                    <td>{reg.last_name ?? <span className="muted-text">—</span>}</td>
-                    <td>{reg.email}</td>
-                    <td>{reg.cursus ?? <span className="muted-text">—</span>}</td>
-                    <td className="muted-text">{new Date(reg.created_at).toLocaleDateString("fr-FR")}</td>
-                    <td>
-                      <button
-                        className="btn btn-small btn-danger"
-                        type="button"
-                        onClick={() => { if (window.confirm(`Supprimer l'inscription de ${reg.first_name} ?`)) deleteRegistration(reg.id); }}
-                      >
-                        <Icon name="trash" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <form onSubmit={handleRegister}>
+            {regError ? <div className="form-error" style={{ marginBottom: 12 }}>{regError}</div> : null}
+            <div className="signup-fields">
+              <div className="field">
+                <FieldLabel>Prénom</FieldLabel>
+                <input className="input" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Prénom" />
+              </div>
+              <div className="field">
+                <FieldLabel>Nom</FieldLabel>
+                <input className="input" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nom" />
+              </div>
+              <div className="field">
+                <FieldLabel>Email</FieldLabel>
+                <input className="input" type="email" value={userEmail} readOnly />
+              </div>
+              <div className="field">
+                <FieldLabel>Cursus <span className="muted-text">(optionnel)</span></FieldLabel>
+                <input className="input" type="text" value={cursus} onChange={(e) => setCursus(e.target.value)} placeholder="Ex. B1 Informatique" />
+              </div>
+            </div>
+            <button className="btn btn-primary" type="submit" disabled={regSubmitting} style={{ marginTop: 16 }}>
+              {regSubmitting ? "Inscription en cours…" : "S'inscrire"}
+            </button>
+          </form>
         )}
       </section>
+
+      {isAdmin ? (
+        <section className="wrap registrations-section">
+          <div className="registrations-header">
+            <h3>Inscriptions</h3>
+            <span className="registrations-count">{registrations.length} inscrit{registrations.length !== 1 ? "s" : ""}</span>
+          </div>
+
+          {loadingReg ? (
+            <div className="loading-shell">Chargement…</div>
+          ) : registrations.length === 0 ? (
+            <div className="empty-inline">Aucune inscription pour le moment.</div>
+          ) : (
+            <div className="registrations-table-wrap">
+              <table className="registrations-table">
+                <thead>
+                  <tr>
+                    <th>Prénom</th>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Cursus</th>
+                    <th>Inscrit le</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registrations.map((reg) => (
+                    <tr key={reg.id}>
+                      <td>{reg.first_name}</td>
+                      <td>{reg.last_name ?? <span className="muted-text">—</span>}</td>
+                      <td>{reg.email}</td>
+                      <td>{reg.cursus ?? <span className="muted-text">—</span>}</td>
+                      <td className="muted-text">{new Date(reg.created_at).toLocaleDateString("fr-FR")}</td>
+                      <td>
+                        <button
+                          className="btn btn-small btn-danger"
+                          type="button"
+                          onClick={() => { if (window.confirm(`Désinscrire ${reg.first_name} ?`)) deleteRegistration(reg.id); }}
+                        >
+                          Désinscrire
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
     </>
   );
 }
