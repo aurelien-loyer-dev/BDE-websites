@@ -276,10 +276,12 @@ function EventCard({
 
 function AuthScreen({
   onAuthenticate,
+  onOtpVerified,
   error,
   isLoading,
 }: {
   onAuthenticate: (email: string, password: string) => Promise<void>;
+  onOtpVerified: () => void;
   error: string;
   isLoading: boolean;
 }) {
@@ -358,6 +360,7 @@ function AuthScreen({
     }
 
     setOtpSubmitting(false);
+    onOtpVerified();
   }
 
   return (
@@ -1481,13 +1484,11 @@ export default function App() {
       }
 
       setUserEmail(data.session?.user.email ?? null);
-      setNeedsPasswordSetup(Boolean(data.session?.user) && data.session?.user.user_metadata?.has_password !== true);
       setAuthLoading(false);
     }
 
     const { data } = client.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user.email ?? null);
-      setNeedsPasswordSetup(Boolean(session?.user) && session?.user.user_metadata?.has_password !== true);
       setAuthLoading(false);
     });
 
@@ -1793,7 +1794,7 @@ export default function App() {
   }
 
   if (!userEmail) {
-    return <AuthScreen onAuthenticate={handleAuthenticate} error={authError} isLoading={authSubmitting} />;
+    return <AuthScreen onAuthenticate={handleAuthenticate} onOtpVerified={() => setNeedsPasswordSetup(true)} error={authError} isLoading={authSubmitting} />;
   }
 
   return (
