@@ -202,49 +202,45 @@ export function EventDetailView({
             ) : null}
             <DetailStat icon={<Icon name="users" />} label="Places" value={event.places > 0 ? `${event.places} disponibles` : "Non limité"} />
             <DetailStat icon={<Icon name="users" />} label="Inscrits" value={`${registrations.length}`} />
+            {loadingReg ? null : isAlreadyRegistered || regDone ? (
+              <div className="empty-inline" style={{ marginTop: 12 }}>Vous êtes inscrit(e).</div>
+            ) : showRegForm ? (
+              <form onSubmit={handleRegister} style={{ marginTop: 12 }}>
+                {regError ? <div className="form-error" style={{ marginBottom: 8 }}>{regError}</div> : null}
+                <div className="signup-fields">
+                  <div className="field">
+                    <FieldLabel>Prénom</FieldLabel>
+                    <input className="input" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Prénom" />
+                  </div>
+                  <div className="field">
+                    <FieldLabel>Nom</FieldLabel>
+                    <input className="input" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nom" />
+                  </div>
+                  <div className="field">
+                    <FieldLabel>Email</FieldLabel>
+                    <input className="input" type="email" value={userEmail} readOnly />
+                  </div>
+                  <div className="field">
+                    <FieldLabel>Cursus <span className="muted-text">(optionnel)</span></FieldLabel>
+                    <input className="input" type="text" value={cursus} onChange={(e) => setCursus(e.target.value)} placeholder="Ex. B1 Informatique" />
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button className="btn btn-primary" type="submit" disabled={regSubmitting}>
+                    {regSubmitting ? "Inscription…" : "Confirmer"}
+                  </button>
+                  <button className="btn" type="button" onClick={() => { setShowRegForm(false); setRegError(""); }}>
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button className="btn btn-primary" type="button" style={{ marginTop: 12, width: "100%" }} onClick={() => setShowRegForm(true)}>
+                S&apos;inscrire
+              </button>
+            )}
           </div>
         </aside>
-      </section>
-
-      <section className="wrap registrations-section">
-        <h3>Inscription</h3>
-        {loadingReg ? null : isAlreadyRegistered || regDone ? (
-          <div className="empty-inline">Vous êtes inscrit(e) à cet événement.</div>
-        ) : showRegForm ? (
-          <form onSubmit={handleRegister}>
-            {regError ? <div className="form-error" style={{ marginBottom: 12 }}>{regError}</div> : null}
-            <div className="signup-fields">
-              <div className="field">
-                <FieldLabel>Prénom</FieldLabel>
-                <input className="input" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Prénom" />
-              </div>
-              <div className="field">
-                <FieldLabel>Nom</FieldLabel>
-                <input className="input" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Nom" />
-              </div>
-              <div className="field">
-                <FieldLabel>Email</FieldLabel>
-                <input className="input" type="email" value={userEmail} readOnly />
-              </div>
-              <div className="field">
-                <FieldLabel>Cursus <span className="muted-text">(optionnel)</span></FieldLabel>
-                <input className="input" type="text" value={cursus} onChange={(e) => setCursus(e.target.value)} placeholder="Ex. B1 Informatique" />
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              <button className="btn btn-primary" type="submit" disabled={regSubmitting}>
-                {regSubmitting ? "Inscription en cours…" : "Confirmer l'inscription"}
-              </button>
-              <button className="btn" type="button" onClick={() => { setShowRegForm(false); setRegError(""); }}>
-                Annuler
-              </button>
-            </div>
-          </form>
-        ) : (
-          <button className="btn btn-primary" type="button" onClick={() => setShowRegForm(true)}>
-            S&apos;inscrire
-          </button>
-        )}
       </section>
 
       {isAdmin ? (
