@@ -36,12 +36,21 @@ export type Registration = {
   created_at: string;
 };
 
+export type EventMappingConfig = {
+  event_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  cursus: string | null;
+};
+
 export type GFormRecord = {
   id: string;
   name: string;
   google_form_url: string;
   spreadsheet_id: string;
   created_at: string;
+  event_mapping?: EventMappingConfig | null;
 };
 
 export type FormState = {

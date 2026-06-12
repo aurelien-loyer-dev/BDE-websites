@@ -31,10 +31,10 @@ function CreateEventEditRoute({ events, onUpdate, saving }: { events: EventRecor
   return <CreateEventView existingEvent={existingEvent} onUpdate={onUpdate} saving={saving} />;
 }
 
-function FormDetailRoute({ forms }: { forms: GFormRecord[] }) {
+function FormDetailRoute({ forms, isAdmin, events, onFormUpdated }: { forms: GFormRecord[]; isAdmin: boolean; events: EventRecord[]; onFormUpdated: (form: GFormRecord) => void }) {
   const { id } = useParams<{ id: string }>();
   const form = forms.find((f) => f.id === id);
-  return <FormDetailView form={form} />;
+  return <FormDetailView form={form} isAdmin={isAdmin} events={events} onFormUpdated={onFormUpdated} />;
 }
 
 export default function App() {
@@ -133,7 +133,7 @@ export default function App() {
     if (!supabase) return;
     const { data } = await supabase
       .from("forms")
-      .select("id, name, google_form_url, spreadsheet_id, created_at")
+      .select("id, name, google_form_url, spreadsheet_id, created_at, event_mapping")
       .order("created_at", { ascending: false });
     setGForms((data as GFormRecord[]) ?? []);
   }
@@ -361,7 +361,7 @@ export default function App() {
         <Route path="/events/:id/edit" element={<CreateEventEditRoute events={events} onUpdate={handleUpdate} saving={savingEvent} />} />
         <Route path="/events/:id" element={<EventDetailRoute events={events} onDelete={handleDelete} longDateFormatter={formatters.longDate} isAdmin={isAdmin} userEmail={userEmail ?? ""} userId={userId} />} />
         <Route path="/forms" element={<FormsView forms={gForms} onFormAdded={(form) => setGForms((prev) => [form, ...prev])} onFormUpdated={(form) => setGForms((prev) => prev.map((f) => f.id === form.id ? form : f))} onFormDeleted={(id) => setGForms((prev) => prev.filter((f) => f.id !== id))} onRefetch={refreshForms} isAdmin={isAdmin} />} />
-        <Route path="/forms/:id" element={<FormDetailRoute forms={gForms} />} />
+        <Route path="/forms/:id" element={<FormDetailRoute forms={gForms} isAdmin={isAdmin} events={events} onFormUpdated={(form) => setGForms((prev) => prev.map((f) => f.id === form.id ? form : f))} />} />
         <Route path="/admin" element={isAdmin ? <AdminView /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
