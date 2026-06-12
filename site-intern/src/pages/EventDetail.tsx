@@ -14,10 +14,24 @@ const BASE_COLS = [
   { key: "first_name" as const, label: "Prénom" },
   { key: "last_name" as const, label: "Nom" },
   { key: "email" as const, label: "Email" },
-  { key: "cursus" as const, label: "Cursus" },
 ];
 const BASE_COL_KEYS = new Set(BASE_COLS.map((c) => c.key as string));
-const BASE_SHEET_NAMES = new Set(["prénom", "nom", "email", "cursus", "horodateur"]);
+// Headers from the sheet to exclude from sheet columns (they map to base cols or are irrelevant)
+const BASE_SHEET_NAMES = new Set(["prénom", "nom", "email", "horodateur"]);
+
+function hiddenSheetColsKey(eventId: string) {
+  return `tracking-hidden-${eventId}`;
+}
+
+function getHiddenSheetCols(eventId: string): string[] {
+  try { return JSON.parse(localStorage.getItem(hiddenSheetColsKey(eventId)) ?? "[]") as string[]; }
+  catch { return []; }
+}
+
+function setHiddenSheetCols(eventId: string, cols: string[]) {
+  try { localStorage.setItem(hiddenSheetColsKey(eventId), JSON.stringify(cols)); }
+  catch {}
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -57,9 +71,15 @@ export function EventDetailView({
   const [activeTab, setActiveTab] = useState<"detail" | "tracking">("detail");
 
   // ── Tracking state ──
+  // event_tracking overrides: signup_id → col → value
   const [trackingData, setTrackingData] = useState<Record<string, Record<string, string>>>({});
+  // event_tracking row ids: `${signup_id}:${col}` → row id
   const [trackingRowIds, setTrackingRowIds] = useState<Record<string, string>>({});
+  // Sheet data matched by email: email.toLowerCase() → col → value
+  const [sheetData, setSheetData] = useState<Record<string, Record<string, string>>>({});
+  // Sheet columns (from the linked form's sheet, excluding base cols)
   const [sheetCols, setSheetCols] = useState<string[]>([]);
+  // Manually added columns
   const [customCols, setCustomCols] = useState<string[]>([]);
   const [loadingTracking, setLoadingTracking] = useState(false);
   const [trackingLoaded, setTrackingLoaded] = useState(false);
@@ -76,6 +96,7 @@ export function EventDetailView({
     setTrackingLoaded(false);
     setTrackingData({});
     setTrackingRowIds({});
+    setSheetData({});
     setSheetCols([]);
     setCustomCols([]);
     setEditingCell(null);
@@ -113,21 +134,22 @@ export function EventDetailView({
       });
   }, [event?.id]);
 
-  // Load tracking data (lazy — only when tracking tab is opened)
+  // Load tracking data (lazy — only when tracking tab is first opened)
   useEffect(() => {
     if (activeTab !== "tracking" || trackingLoaded || !event || !supabase) return;
 
     async function loadTracking() {
       setLoadingTracking(true);
 
-      const { data: rows } = await supabase!
+      // 1. Load event_tracking overrides
+      const { data: tRows } = await supabase!
         .from("event_tracking")
         .select("id, signup_id, column_name, value")
         .eq("event_id", event!.id);
 
       const tData: Record<string, Record<string, string>> = {};
       const tIds: Record<string, string> = {};
-      for (const row of rows ?? []) {
+      for (const row of tRows ?? []) {
         const sid = String(row.signup_id);
         if (!tData[sid]) tData[sid] = {};
         tData[sid][String(row.column_name)] = String(row.value ?? "");
@@ -136,34 +158,62 @@ export function EventDetailView({
       setTrackingData(tData);
       setTrackingRowIds(tIds);
 
-      // Fetch extra sheet columns from linked form
+      // 2. Load linked form + full sheet data
       const linkedForm = gForms.find((f) => f.event_mapping?.event_id === event!.id);
       let fetchedSheetCols: string[] = [];
+      const fetchedSheetData: Record<string, Record<string, string>> = {};
+
       if (linkedForm) {
         const apiKey = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined;
         if (apiKey) {
           try {
             const res = await fetch(
-              `https://sheets.googleapis.com/v4/spreadsheets/${linkedForm.spreadsheet_id}/values/A1:Z1?key=${apiKey}`
+              `https://sheets.googleapis.com/v4/spreadsheets/${linkedForm.spreadsheet_id}/values/A1:Z1000?key=${apiKey}`
             );
             if (res.ok) {
               const json = await res.json() as { values?: string[][] };
-              fetchedSheetCols = (json.values?.[0] ?? []).filter(
+              const allRows = json.values ?? [];
+              const headers = allRows[0] ?? [];
+
+              // Email column index from event_mapping
+              const emailColHeader = linkedForm.event_mapping?.email ?? null;
+              const emailColIdx = emailColHeader ? headers.indexOf(emailColHeader) : -1;
+
+              // Sheet cols = all headers except base-equivalent and horodateur
+              fetchedSheetCols = headers.filter(
                 (h) => !BASE_SHEET_NAMES.has(h.trim().toLowerCase())
               );
+
+              // Build email → { col → value } map from sheet rows
+              if (emailColIdx >= 0) {
+                for (const row of allRows.slice(1)) {
+                  const email = (row[emailColIdx] ?? "").trim().toLowerCase();
+                  if (!email || fetchedSheetData[email]) continue; // first match wins
+                  const rowData: Record<string, string> = {};
+                  headers.forEach((h, i) => { rowData[h] = row[i] ?? ""; });
+                  fetchedSheetData[email] = rowData;
+                }
+              }
             }
           } catch {}
         }
       }
-      setSheetCols(fetchedSheetCols);
 
-      // Derive custom columns from tracking data (not base, not sheet)
+      // 3. Apply hidden sheet cols from localStorage
+      const hidden = getHiddenSheetCols(event!.id);
+      fetchedSheetCols = fetchedSheetCols.filter((c) => !hidden.includes(c));
+
+      setSheetCols(fetchedSheetCols);
+      setSheetData(fetchedSheetData);
+
+      // 4. Derive custom columns: tracking cols not in base and not in sheet cols
+      const sheetColSet = new Set(fetchedSheetCols);
       const allTrackedCols = new Set<string>();
       for (const sid of Object.keys(tData)) {
         for (const col of Object.keys(tData[sid])) allTrackedCols.add(col);
       }
       const custom = [...allTrackedCols].filter(
-        (c) => !BASE_COL_KEYS.has(c) && !fetchedSheetCols.includes(c)
+        (c) => !BASE_COL_KEYS.has(c) && !sheetColSet.has(c)
       );
       setCustomCols(custom);
 
@@ -185,13 +235,15 @@ export function EventDetailView({
   // ── Tracking helpers ──────────────────────────────────────────────────────
 
   function getCellValue(signupId: string, col: string, reg: Registration): string {
+    // event_tracking override takes priority
     const tracked = trackingData[signupId]?.[col];
     if (tracked !== undefined) return tracked;
+    // Base columns from event_signups
     if (col === "first_name") return reg.first_name;
     if (col === "last_name") return reg.last_name ?? "";
     if (col === "email") return reg.email;
-    if (col === "cursus") return reg.cursus ?? "";
-    return "";
+    // Sheet columns matched by email
+    return sheetData[reg.email.toLowerCase()]?.[col] ?? "";
   }
 
   function startEdit(signupId: string, col: string, reg: Registration) {
@@ -237,11 +289,21 @@ export function EventDetailView({
     setCustomCols((prev) => [...prev, trimmed]);
   }
 
-  async function deleteColumn(col: string) {
+  async function deleteColumn(col: string, isSheetCol: boolean) {
     if (!supabase) return;
     if (!window.confirm(`Supprimer la colonne "${col}" et toutes ses données ?`)) return;
+
     await supabase.from("event_tracking").delete().eq("event_id", event!.id).eq("column_name", col);
-    setCustomCols((prev) => prev.filter((c) => c !== col));
+
+    if (isSheetCol) {
+      // Persist hidden state so col stays gone after reload
+      const hidden = getHiddenSheetCols(event!.id);
+      if (!hidden.includes(col)) setHiddenSheetCols(event!.id, [...hidden, col]);
+      setSheetCols((prev) => prev.filter((c) => c !== col));
+    } else {
+      setCustomCols((prev) => prev.filter((c) => c !== col));
+    }
+
     setTrackingData((prev) => {
       const next: Record<string, Record<string, string>> = {};
       for (const sid of Object.keys(prev)) {
@@ -265,10 +327,10 @@ export function EventDetailView({
       ...sheetCols.map((c) => ({ key: c, label: c })),
       ...customCols.map((c) => ({ key: c, label: c })),
     ];
-    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const header = colDefs.map((c) => escape(c.label)).join(",");
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const header = colDefs.map((c) => esc(c.label)).join(",");
     const lines = registrations.map((reg) =>
-      colDefs.map((c) => escape(getCellValue(reg.id, c.key, reg))).join(",")
+      colDefs.map((c) => esc(getCellValue(reg.id, c.key, reg))).join(",")
     );
     const csv = "﻿" + [header, ...lines].join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
@@ -330,9 +392,9 @@ export function EventDetailView({
   }
 
   const allTrackingCols = [
-    ...BASE_COLS.map((c) => ({ key: c.key as string, label: c.label, deletable: false })),
-    ...sheetCols.map((c) => ({ key: c, label: c, deletable: false })),
-    ...customCols.map((c) => ({ key: c, label: c, deletable: true })),
+    ...BASE_COLS.map((c) => ({ key: c.key as string, label: c.label, deletable: false, isSheetCol: false })),
+    ...sheetCols.map((c) => ({ key: c, label: c, deletable: true, isSheetCol: true })),
+    ...customCols.map((c) => ({ key: c, label: c, deletable: true, isSheetCol: false })),
   ];
 
   return (
@@ -578,9 +640,9 @@ export function EventDetailView({
                           {col.deletable ? (
                             <button
                               type="button"
-                              onClick={() => deleteColumn(col.key)}
-                              title={`Supprimer la colonne "${col.label}"`}
-                              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, opacity: 0.5, fontSize: "0.8rem" }}
+                              onClick={() => deleteColumn(col.key, col.isSheetCol)}
+                              title={`Supprimer "${col.label}"`}
+                              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1, opacity: 0.45, fontSize: "0.75rem" }}
                             >
                               ✕
                             </button>
