@@ -18,6 +18,7 @@ type EventRecord = {
   entryPrice: number;
   extraPrices: PriceItem[];
   places: number;
+  signupCount: number;
   visibility: "public" | "prive";
   schedule: ScheduleItem[];
   activities: string[];
@@ -157,6 +158,20 @@ async function fetchPublicEvents(): Promise<EventRecord[]> {
 
   if (error || !data) return [];
 
+  const eventIds = data.map((row) => String(row.id));
+
+  const signupCounts = new Map<string, number>();
+  if (eventIds.length > 0) {
+    const { data: signups } = await supabase
+      .from("event_signups")
+      .select("event_id")
+      .in("event_id", eventIds);
+    for (const row of signups ?? []) {
+      const eid = String(row.event_id);
+      signupCounts.set(eid, (signupCounts.get(eid) ?? 0) + 1);
+    }
+  }
+
   return data.map((row) => ({
     id: String(row.id),
     title: row.title ?? "Sans titre",
@@ -169,6 +184,7 @@ async function fetchPublicEvents(): Promise<EventRecord[]> {
       ? (row.extra_prices as PriceItem[])
       : [],
     places: Number(row.places ?? 0),
+    signupCount: signupCounts.get(String(row.id)) ?? 0,
     visibility: (row.visibility ?? "public") as "public" | "prive",
     schedule: Array.isArray(row.schedule)
       ? (row.schedule as ScheduleItem[])
@@ -234,12 +250,12 @@ function EventSlide({ event }: { event: EventRecord }) {
               </div>
             ) : null}
           </div>
-          <div className="kiosk-info-row">
-            <span className="kiosk-info-label">Places</span>
-            <span className="kiosk-info-value">
-              {event.places > 0 ? `${event.places} disponibles` : "Non limité"}
-            </span>
-          </div>
+          {event.places > 0 ? (
+            <div className="kiosk-info-row">
+              <span className="kiosk-info-label">Places</span>
+              <span className="kiosk-info-value">{event.signupCount}/{event.places} places</span>
+            </div>
+          ) : null}
         </div>
 
         {scheduleItems.length > 0 ? (
@@ -319,6 +335,9 @@ export default function App() {
     const channel = client
       .channel("kiosk-events")
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => {
+        load(true);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_signups" }, () => {
         load(true);
       })
       .subscribe();
