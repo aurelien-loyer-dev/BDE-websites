@@ -377,7 +377,7 @@ export function FormDetailView({
               {importError ? <div className="form-error">{importError}</div> : null}
 
               {importResult ? (
-                <div style={{ background: "var(--surface-raised, #f8fafc)", border: "1px solid var(--border, #e2e8f0)", borderRadius: 8, padding: "12px 16px", fontSize: "0.9rem" }}>
+                <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "12px 16px", fontSize: "0.9rem", color: "#166534" }}>
                   <strong>{importResult.imported}</strong> inscription{importResult.imported !== 1 ? "s" : ""} importée{importResult.imported !== 1 ? "s" : ""}
                   {importResult.duplicates > 0 ? `, ${importResult.duplicates} doublon${importResult.duplicates !== 1 ? "s" : ""} ignoré${importResult.duplicates !== 1 ? "s" : ""}` : ""}
                   {" "}— configuration sauvegardée.
