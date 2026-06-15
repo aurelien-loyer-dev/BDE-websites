@@ -618,6 +618,14 @@ export function EventDetailView({
               <button className="btn btn-small" type="button" onClick={addColumn}>
                 + Ajouter une colonne
               </button>
+              <button
+                className="btn btn-small"
+                type="button"
+                disabled={loadingTracking}
+                onClick={() => { setLoadingTracking(true); setTrackingLoaded(false); }}
+              >
+                {loadingTracking ? "Mise à jour…" : "Mettre à jour"}
+              </button>
               <button className="btn btn-small" type="button" onClick={exportCSV}>
                 Exporter CSV
               </button>
