@@ -368,7 +368,6 @@ export default function App() {
 
       <footer className="footer wrap">
         <span>BDE Epitech Réunion</span>
-        <span>{events.length} événement(s)</span>
       </footer>
     </div>
   );
