@@ -12,6 +12,7 @@ import { CreateEventView } from "./pages/CreateEvent";
 import { FormsView } from "./pages/forms/FormsList";
 import { FormDetailView } from "./pages/forms/FormDetail";
 import { AdminView } from "./pages/Admin";
+import { ArdoiseView } from "./pages/Ardoise";
 import logoBDE from "./public/logoBDE.jpg";
 
 const allowedEmails = (import.meta.env.VITE_ALLOWED_EMAILS as string | undefined)
@@ -362,6 +363,7 @@ export default function App() {
         <Route path="/events/:id" element={<EventDetailRoute events={events} onDelete={handleDelete} longDateFormatter={formatters.longDate} isAdmin={isAdmin} userEmail={userEmail ?? ""} userId={userId} gForms={gForms} />} />
         <Route path="/forms" element={<FormsView forms={gForms} onFormAdded={(form) => setGForms((prev) => [form, ...prev])} onFormUpdated={(form) => setGForms((prev) => prev.map((f) => f.id === form.id ? form : f))} onFormDeleted={(id) => setGForms((prev) => prev.filter((f) => f.id !== id))} onRefetch={refreshForms} isAdmin={isAdmin} />} />
         <Route path="/forms/:id" element={<FormDetailRoute forms={gForms} isAdmin={isAdmin} events={events} onFormUpdated={(form) => setGForms((prev) => prev.map((f) => f.id === form.id ? form : f))} />} />
+        <Route path="/ardoise" element={<ArdoiseView isAdmin={isAdmin} userId={userId} />} />
         <Route path="/admin" element={isAdmin ? <AdminView /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

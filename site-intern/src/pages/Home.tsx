@@ -19,6 +19,10 @@ export function HomeView({ isAdmin }: { isAdmin: boolean }) {
             <span className="tool-card-icon"><Icon name="calendar" /></span>
             <span className="tool-card-label">Formulaires</span>
           </button>
+          <button className="tool-card" type="button" onClick={() => navigate("/ardoise")}>
+            <span className="tool-card-icon"><Icon name="euro" /></span>
+            <span className="tool-card-label">Ardoise</span>
+          </button>
         </div>
       </div>
     </section>

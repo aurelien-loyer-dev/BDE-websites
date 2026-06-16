@@ -53,6 +53,15 @@ export type GFormRecord = {
   event_mapping?: EventMappingConfig | null;
 };
 
+export type ArdoiseItem = {
+  id: string;
+  user_id: string;
+  article: string;
+  quantity: number;
+  paid: boolean;
+  created_at: string;
+};
+
 export type FormState = {
   title: string;
   date: string;
